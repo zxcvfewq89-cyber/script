@@ -1,6 +1,6 @@
 -- ==========================================
--- 🐱 แมวส้ม Script Hub - Compact Mobile v3
--- (UI เล็กลง + UIScale + Sky ใช้งานได้จริง)
+-- 🐱 แมวส้ม Script Hub - Compact Mobile v4
+-- (UI เล็กสำหรับมือถือ + ภาษาไทย + Sky ทำงานได้จริง)
 -- ==========================================
 
 local Players = game:GetService("Players")
@@ -19,7 +19,6 @@ if LocalPlayer.PlayerGui:FindFirstChild("AnimeScriptHub") then
     LocalPlayer.PlayerGui.AnimeScriptHub:Destroy()
 end
 
--- ✅ ตรวจจอใหม่: จอสัมผัส หรือ กว้าง < 1100 = มือถือ
 local isMobile = UserInputService.TouchEnabled
 local isSmallScreen = isMobile or (Camera.ViewportSize.X < 1100) or (Camera.ViewportSize.Y < 700)
 
@@ -306,7 +305,7 @@ BarFill.Parent = BarBg
 Instance.new("UICorner", BarFill).CornerRadius = UDim.new(1, 0)
 
 -- ==========================================
--- Main Frame (ขนาดกะทัดรัด)
+-- Main Frame
 -- ==========================================
 local frameW = isSmallScreen and 330 or 480
 local frameH = isSmallScreen and 240 or 320
@@ -479,7 +478,7 @@ UserInputService.InputChanged:Connect(function(input)
 end)
 
 -- ==========================================
--- UI Components (ย่อขนาด)
+-- UI Components
 -- ==========================================
 local function CreateSidebarButton(name, order, callback)
     local btn = Instance.new("TextButton")
@@ -702,8 +701,7 @@ local function CreatePage(title)
     page.BackgroundTransparency = 1
     page.ScrollBarThickness = 2
     page.ScrollBarImageColor3 = Config.ThemeColor
-    page.ZIndex = 3
-    page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    page.ZIndex = 3    page.CanvasSize = UDim2.new(0, 0, 0, 0)
     page.Parent = ContentContainer
     local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -1001,21 +999,23 @@ if hasHook then
 end
 
 -- ==========================================
--- เมนู: หน้าหลัก
+-- เมนู: หน้าหลัก (มี Silent Aim กลับมาแล้ว)
 -- ==========================================
-CreateSidebarButton("🏠 หลัก", 1, function()
+CreateSidebarButton("🏠 หน้าหลัก", 1, function()
     local page = CreatePage("หน้าหลัก")
-    CreateToggle(page, "🎯 ล็อกเป้า", "AimbotEnabled", false, function(state)
+    
+    CreateToggle(page, "🎯 ล็อกเป้าหมาย", "AimbotEnabled", false, function(state)
         if FOVCircle then FOVCircle.Visible = state end
         if not state then
             if TargetSnapLine then TargetSnapLine.Visible = false end
             currentLockedTarget = nil
         end
     end)
+    
     local aimModeBtn = Instance.new("TextButton")
     aimModeBtn.Size = UDim2.new(1, 0, 0, 26)
     aimModeBtn.BackgroundColor3 = Config.ThemeColor
-    aimModeBtn.Text = "🎯 โหมด: " .. (Config.AimPart == "Head" and "หัว" or "ตัว")
+    aimModeBtn.Text = "🎯 โหมดล็อก: " .. (Config.AimPart == "Head" and "หัว" or "ตัว")
     aimModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     aimModeBtn.TextSize = 10
     aimModeBtn.Font = Enum.Font.GothamBold
@@ -1024,15 +1024,24 @@ CreateSidebarButton("🏠 หลัก", 1, function()
     Instance.new("UICorner", aimModeBtn).CornerRadius = UDim.new(0, 6)
     aimModeBtn.MouseButton1Click:Connect(function()
         Config.AimPart = (Config.AimPart == "Head") and "HumanoidRootPart" or "Head"
-        aimModeBtn.Text = "🎯 โหมด: " .. (Config.AimPart == "Head" and "หัว" or "ตัว")
+        aimModeBtn.Text = "🎯 โหมดล็อก: " .. (Config.AimPart == "Head" and "หัว" or "ตัว")
     end)
-    CreateSlider(page, "📡 FOV", 50, 500, "FOVCircleRadius", 250, function(value)
+    
+    CreateSlider(page, "📡 ขนาด FOV", 50, 500, "FOVCircleRadius", 250, function(value)
         if FOVCircle then FOVCircle.Radius = value end
     end)
-    CreateSlider(page, "🔒 ความแรง", 0, 100, "LockStrength", 90, function(value) Config.LockStrength = value end)
-    CreateToggle(page, "🧱 ไม่ผ่านกำแพง", "WallCheck", true, function(state) end)
-    CreateToggle(page, "🚀 Silent Aim", "BulletHomingEnabled", false, function(state)
-        if FOVCircle then FOVCircle.Visible = state end
+    CreateSlider(page, "🔒 ความแรงล็อก", 0, 100, "LockStrength", 90, function(value) Config.LockStrength = value end)
+    CreateToggle(page, "🧱 ไม่ล็อกผ่านกำแพง", "WallCheck", true, function(state) end)
+    
+    -- ✅ เพิ่ม Silent Aim กลับมาแล้ว
+    CreateToggle(page, "🚀 Silent Aim (ยิงทะลุ)", "BulletHomingEnabled", false, function(state)
+        if state then
+            if FOVCircle then FOVCircle.Visible = true end
+            SendNotification("Silent Aim", "เปิดการยิงอัตโนมัติ", 2)
+        else
+            if not Config.AimbotEnabled and FOVCircle then FOVCircle.Visible = false end
+            SendNotification("Silent Aim", "ปิดการยิงอัตโนมัติ", 2)
+        end
     end)
 end)
 
@@ -1132,11 +1141,11 @@ CreateSidebarButton("👥 ผู้เล่น", 2, function()
 end)
 
 -- ==========================================
--- เมนู: บิน
+-- เมนู: ผู้เล่น/บิน
 -- ==========================================
-CreateSidebarButton("👤 บิน", 3, function()
+CreateSidebarButton("👤 ผู้เล่น/บิน", 3, function()
     local page = CreatePage("ผู้เล่น & การเคลื่อนที่")
-    CreateTextBox(page, "⚡ Speed (0-1000)", "SpeedValue", 500, 1000, function(value)
+    CreateTextBox(page, "⚡ ความเร็ว (0-1000)", "SpeedValue", 500, 1000, function(value)
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
             LocalPlayer.Character.Humanoid.WalkSpeed = value
         end
@@ -1146,7 +1155,7 @@ CreateSidebarButton("👤 บิน", 3, function()
             LocalPlayer.Character.Humanoid.WalkSpeed = state and Config.SpeedValue or 16
         end
     end)
-    CreateToggle(page, "🛡️ Bypass Anti-Cheat", "SpeedBypass", true, function(state) end)
+    CreateToggle(page, "🛡️ ป้องกันการแบน", "SpeedBypass", true, function(state) end)
     CreateSlider(page, "ความเร็วบิน", 10, 500, "FlySpeed", 100, function(value) end)
     CreateToggle(page, "🕊️ โหมดบิน", "FlyEnabled", false, function(state)
         local char = LocalPlayer.Character
@@ -1172,9 +1181,9 @@ CreateSidebarButton("👤 บิน", 3, function()
 end)
 
 -- ==========================================
--- เมนู: ESP
+-- เมนู: เส้นมอง
 -- ==========================================
-CreateSidebarButton("👁️ ESP", 4, function()
+CreateSidebarButton("👁️ เส้นมอง", 4, function()
     local page = CreatePage("เส้นมอง (ESP)")
     CreateToggle(page, "เปิด/ปิด เส้นมอง", "ESP_Enabled", false, function(state) end)
     CreateToggle(page, "เปิด/ปิด กล่อง", "ESP_Box", false, function(state) end)
@@ -1183,7 +1192,7 @@ CreateSidebarButton("👁️ ESP", 4, function()
     modeBtn.Size = UDim2.new(1, 0, 0, 26)
     modeBtn.BackgroundColor3 = Config.BgColor
     modeBtn.BackgroundTransparency = 0.5
-    modeBtn.Text = "📍 ตำแหน่ง: " .. (Config.ESP_LineMode == "Top" and "บน" or "ล่าง")
+    modeBtn.Text = "📍 ตำแหน่งเส้น: " .. (Config.ESP_LineMode == "Top" and "ด้านบน" or "ด้านล่าง")
     modeBtn.TextColor3 = Config.TextColor
     modeBtn.TextSize = 10
     modeBtn.Font = Enum.Font.Gotham
@@ -1192,12 +1201,12 @@ CreateSidebarButton("👁️ ESP", 4, function()
     Instance.new("UICorner", modeBtn).CornerRadius = UDim.new(0, 6)
     modeBtn.MouseButton1Click:Connect(function()
         Config.ESP_LineMode = (Config.ESP_LineMode == "Top") and "Bottom" or "Top"
-        modeBtn.Text = "📍 ตำแหน่ง: " .. (Config.ESP_LineMode == "Top" and "บน" or "ล่าง")
+        modeBtn.Text = "📍 ตำแหน่งเส้น: " .. (Config.ESP_LineMode == "Top" and "ด้านบน" or "ด้านล่าง")
     end)
     local colorBtn = Instance.new("TextButton")
     colorBtn.Size = UDim2.new(1, 0, 0, 26)
     colorBtn.BackgroundColor3 = Config.ESP_LineColor
-    colorBtn.Text = "🎨 เปลี่ยนสีเส้น"
+    colorBtn.Text = "🎨 เปลี่ยนสีเส้น ESP"
     colorBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     colorBtn.TextSize = 10
     colorBtn.Font = Enum.Font.Gotham
@@ -1226,7 +1235,7 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
     local gfxLabel = Instance.new("TextLabel")
     gfxLabel.Size = UDim2.new(1, 0, 0, 18)
     gfxLabel.BackgroundTransparency = 1
-    gfxLabel.Text = "🎨 Graphics"
+    gfxLabel.Text = "🎨 ภาพสวย (Graphics)"
     gfxLabel.TextColor3 = Config.TextColor
     gfxLabel.TextSize = 11
     gfxLabel.Font = Enum.Font.GothamBold
@@ -1234,11 +1243,11 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
     gfxLabel.ZIndex = 3
     gfxLabel.Parent = page
 
-    CreateButton(page, "🎨 Cartoon", function() EnableGraphics("Cartoon") end)
-    CreateButton(page, "📷 Realistic", function() EnableGraphics("Realistic") end)
-    CreateButton(page, "🌸 Anime", function() EnableGraphics("Anime") end)
-    CreateButton(page, "🌑 Dark", function() EnableGraphics("Dark") end)
-    CreateButton(page, "💡 Neon", function() EnableGraphics("Neon") end)
+    CreateButton(page, "🎨 การ์ตูน (Cartoon)", function() EnableGraphics("Cartoon") end)
+    CreateButton(page, "📷 สมจริง (Realistic)", function() EnableGraphics("Realistic") end)
+    CreateButton(page, "🌸 อนิเมะ (Anime)", function() EnableGraphics("Anime") end)
+    CreateButton(page, "🌑 มืด (Dark)", function() EnableGraphics("Dark") end)
+    CreateButton(page, "💡 นีออน (Neon)", function() EnableGraphics("Neon") end)
     CreateButton(page, "🔄 รีเซ็ตภาพ", function()
         ClearGraphics()
         pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic end)
@@ -1252,7 +1261,7 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
     local rtxLabel = Instance.new("TextLabel")
     rtxLabel.Size = UDim2.new(1, 0, 0, 18)
     rtxLabel.BackgroundTransparency = 1
-    rtxLabel.Text = "🎬 RTX"
+    rtxLabel.Text = "🎬 RTX (Real Ray Tracing)"
     rtxLabel.TextColor3 = Config.TextColor
     rtxLabel.TextSize = 11
     rtxLabel.Font = Enum.Font.GothamBold
@@ -1266,7 +1275,7 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
     local skyLabel = Instance.new("TextLabel")
     skyLabel.Size = UDim2.new(1, 0, 0, 18)
     skyLabel.BackgroundTransparency = 1
-    skyLabel.Text = "🌌 ท้องฟ้า"
+    skyLabel.Text = "🌌 ท้องฟ้า (เลือกได้ทีละอัน)"
     skyLabel.TextColor3 = Config.TextColor
     skyLabel.TextSize = 11
     skyLabel.Font = Enum.Font.GothamBold
@@ -1277,8 +1286,8 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
     local skyButtons = {}
     local skyNames = {"Sunset", "Space", "Night", "Cloudy", "Sunny", "Pink"}
     local skyLabels = {
-        Sunset = "🌅 Sunset", Space = "🌌 Space", Night = "🌙 Night",
-        Cloudy = "☁️ Cloudy", Sunny = "☀️ Sunny", Pink = "🌸 Pink"
+        Sunset = "🌅 พระอาทิตย์ตก (Sunset)", Space = "🌌 อวกาศ (Space)", Night = "🌙 กลางคืน (Night)",
+        Cloudy = "☁️ เมฆ (Cloudy)", Sunny = "☀️ แดดจ้า (Sunny)", Pink = "🌸 ชมพู (Pink)"
     }
 
     local function RefreshSkyButtons()
@@ -1325,7 +1334,7 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
     local otherLabel = Instance.new("TextLabel")
     otherLabel.Size = UDim2.new(1, 0, 0, 18)
     otherLabel.BackgroundTransparency = 1
-    otherLabel.Text = "⚙️ อื่นๆ"
+    otherLabel.Text = "⚙️ ระบบอื่นๆ"
     otherLabel.TextColor3 = Config.TextColor
     otherLabel.TextSize = 11
     otherLabel.Font = Enum.Font.GothamBold
