@@ -1,6 +1,7 @@
 -- ==========================================
--- 🐱 แมวส้ม Script Hub - Complete Edition v42
--- (Graphics + RTX + Sky อยู่ในตั้งค่า + ทำงานได้จริง)
+-- 🐱 แมวส้ม Script Hub - Slim Edition
+-- (ลบเมนู เสกของ / ขโมยไข่ / ดึงเงิน ออกแล้ว)
+-- (ระบบท้องฟ้า: เลือกได้ทีละอัน แสดงเฉพาะที่เลือก)
 -- ==========================================
 
 local Players = game:GetService("Players")
@@ -36,13 +37,12 @@ local Config = {
     FlyEnabled = false, FlySpeed = 100, FlyHeight = 20,
     AntiLagEnabled = false,
     AFKEnabled = false,
-    CollectRadius = 30,
-    AntiDropEnabled = false, StealDelay = 1,
     FPSEnabled = false, FPSRGB = false, FPSColor = Color3.fromRGB(0, 255, 0),
     ThemeColor = Color3.fromRGB(130, 80, 255),
     BgColor = Color3.fromRGB(20, 15, 35),
     TextColor = Color3.fromRGB(240, 240, 255),
-    TextDim = Color3.fromRGB(160, 160, 190)
+    TextDim = Color3.fromRGB(160, 160, 190),
+    SkySelection = "None" -- ค่าเริ่มต้น: ไม่มีท้องฟ้าถูกเลือก
 }
 
 local currentLockedTarget = nil
@@ -59,7 +59,6 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 999999
 ScreenGui.IgnoreGuiInset = true
 
--- Drawing API
 local FOVCircle, TargetSnapLine
 pcall(function()
     FOVCircle = Drawing.new("Circle")
@@ -210,226 +209,6 @@ local function IsTargetInFOV()
 end
 
 -- ==========================================
--- ระบบขโมยไข่
--- ==========================================
-local Stealing = false
-
-local function FindNearestEgg()
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then return nil end
-    local hrp = char.HumanoidRootPart
-    local nearest = nil
-    local shortest = Config.CollectRadius
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("BasePart") or obj:IsA("Model") then
-            local part = obj:IsA("BasePart") and obj or obj:FindFirstChildWhichIsA("BasePart")
-            if part and part ~= hrp then
-                local name = string.lower(obj.Name)
-                if string.find(name, "egg") or string.find(name, "steal") or string.find(name, "pet") then
-                    local dist = (part.Position - hrp.Position).Magnitude
-                    if dist < shortest then
-                        shortest = dist
-                        nearest = part
-                    end
-                end
-            end
-        end
-    end
-    return nearest
-end
-
-local function StealEggOnce()
-    if Stealing then
-        SendNotification("ขโมยไข่", "กำลังขโมยอยู่...", 2)
-        return
-    end
-    local char = LocalPlayer.Character
-    if not char or not char:FindFirstChild("HumanoidRootPart") then
-        SendNotification("ขโมยไข่", "ไม่พบตัวละคร", 2)
-        return
-    end
-    Stealing = true
-    SendNotification("ขโมยไข่", "กำลังเก็บไข่...", 2)
-    task.wait(Config.StealDelay)
-    local hrp = char.HumanoidRootPart
-    local originalCFrame = hrp.CFrame
-    local egg = FindNearestEgg()
-    if not egg then
-        SendNotification("ขโมยไข่", "ไม่พบไข่ในระยะ", 2)
-        Stealing = false
-        return
-    end
-    pcall(function() hrp.CFrame = CFrame.new(egg.Position) end)
-    task.wait(0.1)
-    pcall(function() hrp.CFrame = originalCFrame end)
-    task.wait(0.1)
-    Stealing = false
-    SendNotification("ขโมยไข่", "เก็บไข่สำเร็จ!", 2)
-end
-
-local AntiDropConnection = nil
-local function EnableAntiDrop()
-    AntiDropConnection = RunService.Heartbeat:Connect(function()
-        if not Config.AntiDropEnabled then
-            if AntiDropConnection then AntiDropConnection:Disconnect() end
-            return
-        end
-        local char = LocalPlayer.Character
-        if not char then return end
-        local tool = char:FindFirstChildOfClass("Tool")
-        if tool then
-            local name = string.lower(tool.Name)
-            if string.find(name, "egg") or string.find(name, "steal") or string.find(name, "pet") then
-                pcall(function()
-                    if tool.Parent ~= char then tool.Parent = char end
-                    if tool:FindFirstChild("Handle") then
-                        tool.Handle.CanCollide = false
-                    end
-                end)
-            end
-        end
-    end)
-end
-local function DisableAntiDrop()
-    if AntiDropConnection then AntiDropConnection:Disconnect(); AntiDropConnection = nil end
-end
-
--- ==========================================
--- สแกนหาไอเทม
--- ==========================================
-local function ScanMapItems()
-    local items = {}
-    local seen = {}
-    for _, obj in pairs(Workspace:GetDescendants()) do
-        if obj:IsA("BasePart") or obj:IsA("Model") or obj:IsA("Tool") then
-            local name = obj.Name
-            if name and #name > 0 and #name < 40 then
-                local nameLower = string.lower(name)
-                local keywords = {"egg", "pet", "sword", "gun", "knife", "weapon", "tool", "item",
-                    "crate", "chest", "coin", "gem", "cash", "reward", "candy", "food",
-                    "toy", "ball", "potion", "magic", "crystal", "orb", "fruit", "seed"}
-                for _, kw in ipairs(keywords) do
-                    if string.find(nameLower, kw) then
-                        if not seen[name] then
-                            seen[name] = true
-                            table.insert(items, {Name = name, Obj = obj, Type = "Workspace"})
-                        end
-                        break
-                    end
-                end
-            end
-        end
-    end
-    for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("BasePart") or obj:IsA("Model") or obj:IsA("Tool") or obj:IsA("Folder") then
-            local name = obj.Name
-            if name and #name > 0 and #name < 40 then
-                if not seen[name] then
-                    seen[name] = true
-                    table.insert(items, {Name = name, Obj = obj, Type = "ReplicatedStorage"})
-                end
-            end
-        end
-    end
-    for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-            local name = obj.Name
-            local nameLower = string.lower(name)
-            local keywords = {"spawn", "give", "create", "summon", "buy", "get", "item", "egg", "pet"}
-            for _, kw in ipairs(keywords) do
-                if string.find(nameLower, kw) then
-                    if not seen["R_" .. name] then
-                        seen["R_" .. name] = true
-                        table.insert(items, {Name = name, Obj = obj, Type = "Remote"})
-                    end
-                    break
-                end
-            end
-        end
-    end
-    table.sort(items, function(a, b) return a.Name < b.Name end)
-    return items
-end
-
-local function SpawnItem(itemData)
-    if not itemData then return end
-    local name = itemData.Name
-    local obj = itemData.Obj
-    local objType = itemData.Type
-    SendNotification("เสกของ", "กำลังเสก: " .. name, 2)
-    if objType == "Remote" then
-        pcall(function()
-            obj:FireServer()
-            obj:FireServer(name)
-            obj:FireServer(1)
-            obj:FireServer(name, 1)
-        end)
-        return
-    end
-    local remotes = {}
-    for _, remote in pairs(ReplicatedStorage:GetDescendants()) do
-        if remote:IsA("RemoteEvent") or remote:IsA("RemoteFunction") then
-            local rName = string.lower(remote.Name)
-            if string.find(rName, "spawn") or string.find(rName, "give") or string.find(rName, "create") or string.find(rName, "summon") then
-                table.insert(remotes, remote)
-            end
-        end
-    end
-    if #remotes > 0 then
-        for _, remote in ipairs(remotes) do
-            pcall(function()
-                remote:FireServer(name)
-                remote:FireServer(name, 1)
-                remote:FireServer(LocalPlayer, name)
-            end)
-        end
-        SendNotification("เสกของ", "✅ ยิง " .. #remotes .. " Remote", 3)
-    else
-        SendNotification("เสกของ", "⚠️ ไม่พบ Remote", 3)
-    end
-end
-
--- ==========================================
--- ดึงเงินจากผู้เล่น
--- ==========================================
-local function FindMoneyRemotes()
-    local remotes = {}
-    local keywords = {"money", "cash", "coin", "steal", "rob", "take", "grab", "claim"}
-    for _, obj in pairs(ReplicatedStorage:GetDescendants()) do
-        if obj:IsA("RemoteEvent") or obj:IsA("RemoteFunction") then
-            local name = string.lower(obj.Name)
-            for _, kw in ipairs(keywords) do
-                if string.find(name, kw) then
-                    table.insert(remotes, obj)
-                    break
-                end
-            end
-        end
-    end
-    return remotes
-end
-
-local function StealMoneyFromPlayer(targetPlayer)
-    if not targetPlayer or not targetPlayer.Character then return end
-    local targetHRP = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not targetHRP then return end
-    local remotes = FindMoneyRemotes()
-    if #remotes == 0 then
-        SendNotification("ดึงเงิน", "❌ ไม่พบ Remote", 3)
-        return
-    end
-    for _, remote in ipairs(remotes) do
-        pcall(function()
-            remote:FireServer(targetPlayer)
-            remote:FireServer(targetPlayer.UserId)
-            remote:FireServer(targetPlayer.Name)
-            remote:FireServer(targetHRP.Position)
-        end)
-    end
-    SendNotification("ดึงเงิน", "✅ ยิงใส่ " .. targetPlayer.Name, 2)
-end
-
--- ==========================================
 -- FPS Counter
 -- ==========================================
 local FPSLabel = Instance.new("TextLabel")
@@ -471,7 +250,7 @@ task.spawn(function()
         frameCount = frameCount + 1
         local now = tick()
         if now - lastTime >= 1 then
-            if Config.FPSEnabled then 
+            if Config.FPSEnabled then
                 FPSLabel.Text = "FPS: " .. frameCount
                 FPSLabel.TextColor3 = Config.FPSRGB and HSVtoRGB(hue, 1, 1) or Config.FPSColor
             end
@@ -1017,7 +796,7 @@ local function DisableAFK()
 end
 
 -- ==========================================
--- ✅ ระบบภาพสวย (Graphics)
+-- ระบบภาพสวย (Graphics)
 -- ==========================================
 local GraphicsEffects = {}
 local function ClearGraphics()
@@ -1127,7 +906,7 @@ local function EnableGraphics(mode)
 end
 
 -- ==========================================
--- ✅ ระบบ RTX
+-- ระบบ RTX
 -- ==========================================
 local RTXEffects = {}
 local function EnableRTX()
@@ -1195,81 +974,88 @@ local function DisableRTX()
 end
 
 -- ==========================================
--- ✅ ระบบท้องฟ้า (Sky) - ใช้ ID จริง ทำงานได้ 100%
+-- ระบบท้องฟ้า (Sky) — เลือกได้ทีละอัน แสดงเฉพาะที่เลือก
 -- ==========================================
-local function SetSky(skyName)
+local SkyPresets = {
+    Sunset = {
+        Bk = "rbxassetid://5227623989", Dn = "rbxassetid://5227624056",
+        Ft = "rbxassetid://5227624232", Lf = "rbxassetid://5227624466",
+        Rt = "rbxassetid://5227624585", Up = "rbxassetid://5227624698",
+        StarCount = 3000
+    },
+    Space = {
+        Bk = "rbxassetid://159454299", Dn = "rbxassetid://159454296",
+        Ft = "rbxassetid://159454293", Lf = "rbxassetid://159454286",
+        Rt = "rbxassetid://159454300", Up = "rbxassetid://159454288",
+        StarCount = 5000
+    },
+    Night = {
+        Bk = "rbxassetid://126148478", Dn = "rbxassetid://126148536",
+        Ft = "rbxassetid://126148590", Lf = "rbxassetid://126148639",
+        Rt = "rbxassetid://126148690", Up = "rbxassetid://126148715",
+        StarCount = 4000
+    },
+    Cloudy = {
+        Bk = "rbxassetid://5705570226", Dn = "rbxassetid://5705570252",
+        Ft = "rbxassetid://5705570378", Lf = "rbxassetid://5705570330",
+        Rt = "rbxassetid://5705570438", Up = "rbxassetid://5705570482",
+        StarCount = 1000
+    },
+    Sunny = {
+        Bk = "rbxassetid://139511069", Dn = "rbxassetid://139511082",
+        Ft = "rbxassetid://139511093", Lf = "rbxassetid://139511104",
+        Rt = "rbxassetid://139511116", Up = "rbxassetid://139511127",
+        StarCount = 1000
+    },
+    Pink = {
+        Bk = "rbxassetid://4874245385", Dn = "rbxassetid://4874245558",
+        Ft = "rbxassetid://4874245832", Lf = "rbxassetid://4874246109",
+        Rt = "rbxassetid://4874246353", Up = "rbxassetid://4874246574",
+        StarCount = 3000
+    }
+}
+
+-- ลบ Sky ที่สคริปต์สร้างไว้ทั้งหมด (ของเก่า + ของใหม่)
+local function ClearAllCustomSkies()
     pcall(function()
-        -- ลบ Sky เก่าทั้งหมด
         for _, v in pairs(Lighting:GetChildren()) do
-            if v:IsA("Sky") then v:Destroy() end
+            if v:IsA("Sky") and (v.Name == "Custom_Sky" or v.Name:match("^SombraSky_")) then
+                v:Destroy()
+            end
         end
-        
+    end)
+end
+
+-- แสดงเฉพาะ Sky ที่เลือก (ลบของเก่าออกก่อนทุกครั้ง)
+local function ApplySky(skyName)
+    ClearAllCustomSkies()
+    if skyName == "None" or not SkyPresets[skyName] then
+        Config.SkySelection = "None"
+        SendNotification("Sky", "ไม่ได้เลือกท้องฟ้า", 2)
+        return
+    end
+    local preset = SkyPresets[skyName]
+    pcall(function()
         local sky = Instance.new("Sky")
-        sky.Name = "Custom_Sky"
-        
-        if skyName == "Sunset" then
-            sky.SkyboxBk = "rbxassetid://5227623989"
-            sky.SkyboxDn = "rbxassetid://5227624056"
-            sky.SkyboxFt = "rbxassetid://5227624232"
-            sky.SkyboxLf = "rbxassetid://5227624466"
-            sky.SkyboxRt = "rbxassetid://5227624585"
-            sky.SkyboxUp = "rbxassetid://5227624698"
-            sky.StarCount = 3000
-        elseif skyName == "Space" then
-            sky.SkyboxBk = "rbxassetid://159454299"
-            sky.SkyboxDn = "rbxassetid://159454296"
-            sky.SkyboxFt = "rbxassetid://159454293"
-            sky.SkyboxLf = "rbxassetid://159454286"
-            sky.SkyboxRt = "rbxassetid://159454300"
-            sky.SkyboxUp = "rbxassetid://159454288"
-            sky.StarCount = 5000
-        elseif skyName == "Night" then
-            sky.SkyboxBk = "rbxassetid://126148478"
-            sky.SkyboxDn = "rbxassetid://126148536"
-            sky.SkyboxFt = "rbxassetid://126148590"
-            sky.SkyboxLf = "rbxassetid://126148639"
-            sky.SkyboxRt = "rbxassetid://126148690"
-            sky.SkyboxUp = "rbxassetid://126148715"
-            sky.StarCount = 4000
-        elseif skyName == "Cloudy" then
-            sky.SkyboxBk = "rbxassetid://5705570226"
-            sky.SkyboxDn = "rbxassetid://5705570252"
-            sky.SkyboxFt = "rbxassetid://5705570378"
-            sky.SkyboxLf = "rbxassetid://5705570330"
-            sky.SkyboxRt = "rbxassetid://5705570438"
-            sky.SkyboxUp = "rbxassetid://5705570482"
-            sky.StarCount = 1000
-        elseif skyName == "Sunny" then
-            sky.SkyboxBk = "rbxassetid://139511069"
-            sky.SkyboxDn = "rbxassetid://139511082"
-            sky.SkyboxFt = "rbxassetid://139511093"
-            sky.SkyboxLf = "rbxassetid://139511104"
-            sky.SkyboxRt = "rbxassetid://139511116"
-            sky.SkyboxUp = "rbxassetid://139511127"
-            sky.StarCount = 1000
-        elseif skyName == "Pink" then
-            sky.SkyboxBk = "rbxassetid://4874245385"
-            sky.SkyboxDn = "rbxassetid://4874245558"
-            sky.SkyboxFt = "rbxassetid://4874245832"
-            sky.SkyboxLf = "rbxassetid://4874246109"
-            sky.SkyboxRt = "rbxassetid://4874246353"
-            sky.SkyboxUp = "rbxassetid://4874246574"
-            sky.StarCount = 3000
-        end
-        
+        sky.Name = "SombraSky_" .. skyName
+        sky.SkyboxBk = preset.Bk
+        sky.SkyboxDn = preset.Dn
+        sky.SkyboxFt = preset.Ft
+        sky.SkyboxLf = preset.Lf
+        sky.SkyboxRt = preset.Rt
+        sky.SkyboxUp = preset.Up
+        sky.StarCount = preset.StarCount
         sky.SunAngularSize = 21
         sky.MoonAngularSize = 11
         sky.Parent = Lighting
     end)
-    SendNotification("Sky", "เปลี่ยนเป็น: " .. skyName, 2)
+    Config.SkySelection = skyName
+    SendNotification("Sky", "เลือก: " .. skyName, 2)
 end
 
 local function ResetSky()
-    pcall(function()
-        for _, v in pairs(Lighting:GetChildren()) do
-            if v:IsA("Sky") then v:Destroy() end
-        end
-    end)
+    ClearAllCustomSkies()
+    Config.SkySelection = "None"
     SendNotification("Sky", "รีเซ็ตเป็นค่าเริ่มต้น", 2)
 end
 
@@ -1306,9 +1092,9 @@ CreateSidebarButton("🏠 หน้าหลัก", 1, function()
     local page = CreatePage("หน้าหลัก")
     CreateToggle(page, "🎯 ล็อกเป้าหมาย", "AimbotEnabled", false, function(state)
         if FOVCircle then FOVCircle.Visible = state end
-        if not state then 
+        if not state then
             if TargetSnapLine then TargetSnapLine.Visible = false end
-            currentLockedTarget = nil 
+            currentLockedTarget = nil
         end
     end)
     local aimModeBtn = Instance.new("TextButton")
@@ -1336,161 +1122,9 @@ CreateSidebarButton("🏠 หน้าหลัก", 1, function()
 end)
 
 -- ==========================================
--- เมนู: เสกของ
--- ==========================================
-CreateSidebarButton("🎁 เสกของ", 2, function()
-    local page = CreatePage("เสกของ")
-    local itemListFrame = Instance.new("ScrollingFrame")
-    itemListFrame.Size = UDim2.new(1, 0, 0, 300)
-    itemListFrame.BackgroundColor3 = Config.BgColor
-    itemListFrame.BackgroundTransparency = 0.7
-    itemListFrame.BorderSizePixel = 0
-    itemListFrame.ScrollBarThickness = 3
-    itemListFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
-    itemListFrame.ZIndex = 3
-    itemListFrame.Parent = page
-    Instance.new("UICorner", itemListFrame).CornerRadius = UDim.new(0, 8)
-    local listLayout = Instance.new("UIListLayout")
-    listLayout.Padding = UDim.new(0, 5)
-    listLayout.Parent = itemListFrame
-    listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        itemListFrame.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 10)
-    end)
-    
-    local scanBtn = Instance.new("TextButton")
-    scanBtn.Size = UDim2.new(1, 0, 0, 50)
-    scanBtn.BackgroundColor3 = Color3.fromRGB(80, 200, 80)
-    scanBtn.Text = "🔍 สแกนหาไอเทมในแมพ"
-    scanBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    scanBtn.TextSize = 16
-    scanBtn.Font = Enum.Font.GothamBold
-    scanBtn.ZIndex = 6
-    scanBtn.Parent = page
-    Instance.new("UICorner", scanBtn).CornerRadius = UDim.new(0, 10)
-    scanBtn.MouseButton1Click:Connect(function()
-        scanBtn.Text = "⏳ กำลังสแกน..."
-        for _, v in pairs(itemListFrame:GetChildren()) do
-            if v:IsA("TextButton") then v:Destroy() end
-        end
-        task.wait(0.3)
-        local items = ScanMapItems()
-        if #items == 0 then
-            local noItem = Instance.new("TextLabel")
-            noItem.Size = UDim2.new(1, 0, 0, 40)
-            noItem.BackgroundTransparency = 1
-            noItem.Text = "❌ ไม่พบไอเทม"
-            noItem.TextColor3 = Color3.fromRGB(255, 100, 100)
-            noItem.Parent = itemListFrame
-            scanBtn.Text = "🔍 สแกนหาไอเทมในแมพ"
-            return
-        end
-        for _, item in ipairs(items) do
-            local itemBtn = Instance.new("TextButton")
-            itemBtn.Size = UDim2.new(1, -10, 0, 40)
-            itemBtn.BackgroundColor3 = Color3.fromRGB(60, 50, 90)
-            itemBtn.Text = "🎁 " .. item.Name .. "  [" .. item.Type .. "]"
-            itemBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-            itemBtn.TextSize = 12
-            itemBtn.Font = Enum.Font.GothamBold
-            itemBtn.TextXAlignment = Enum.TextXAlignment.Left
-            itemBtn.ZIndex = 5
-            itemBtn.Parent = itemListFrame
-            Instance.new("UICorner", itemBtn).CornerRadius = UDim.new(0, 6)
-            itemBtn.MouseButton1Click:Connect(function() SpawnItem(item) end)
-        end
-        scanBtn.Text = "🔍 สแกนหาไอเทมในแมพ"
-        SendNotification("สแกน", "พบ " .. #items .. " ไอเทม", 3)
-    end)
-end)
-
--- ==========================================
--- เมนู: ขโมยไข่
--- ==========================================
-CreateSidebarButton("🥚 ขโมยไข่", 3, function()
-    local page = CreatePage("ขโมยไข่")
-    local stealBtn = Instance.new("TextButton")
-    stealBtn.Size = UDim2.new(1, 0, 0, 55)
-    stealBtn.BackgroundColor3 = Color3.fromRGB(255, 100, 0)
-    stealBtn.Text = "🥚 ขโมยไข่ (กด)"
-    stealBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    stealBtn.TextSize = 16
-    stealBtn.Font = Enum.Font.GothamBold
-    stealBtn.ZIndex = 6
-    stealBtn.Parent = page
-    Instance.new("UICorner", stealBtn).CornerRadius = UDim.new(0, 10)
-    stealBtn.MouseButton1Click:Connect(function() StealEggOnce() end)
-    CreateSlider(page, "⏱️ เวลารอ", 1, 5, "StealDelay", 1, function(value) Config.StealDelay = value end)
-    CreateSlider(page, "📦 รัศมี", 10, 200, "CollectRadius", 30, function(value) Config.CollectRadius = value end)
-    CreateToggle(page, "🛡️ กันไข่ตก", "AntiDropEnabled", false, function(state)
-        if state then EnableAntiDrop() else DisableAntiDrop() end
-    end)
-end)
-
--- ==========================================
--- เมนู: ดึงเงิน
--- ==========================================
-CreateSidebarButton("💰 ดึงเงิน", 4, function()
-    local page = CreatePage("ดึงเงิน")
-    local playerListFrame = Instance.new("Frame")
-    playerListFrame.Size = UDim2.new(1, 0, 0, 300)
-    playerListFrame.BackgroundColor3 = Config.BgColor
-    playerListFrame.BackgroundTransparency = 0.7
-    playerListFrame.ZIndex = 3
-    playerListFrame.Parent = page
-    Instance.new("UICorner", playerListFrame).CornerRadius = UDim.new(0, 8)
-    local listLayout = Instance.new("UIListLayout")
-    listLayout.Padding = UDim.new(0, 5)
-    listLayout.Parent = playerListFrame
-    
-    local function Refresh()
-        for _, v in pairs(playerListFrame:GetChildren()) do
-            if v:IsA("Frame") then v:Destroy() end
-        end
-        for _, player in pairs(Players:GetPlayers()) do
-            if player ~= LocalPlayer then
-                local row = Instance.new("Frame")
-                row.Size = UDim2.new(1, -10, 0, 45)
-                row.Position = UDim2.new(0, 5, 0, 0)
-                row.BackgroundColor3 = Color3.fromRGB(40, 35, 60)
-                row.ZIndex = 4
-                row.Parent = playerListFrame
-                Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
-                local nameLabel = Instance.new("TextLabel")
-                nameLabel.Size = UDim2.new(0.55, 0, 1, 0)
-                nameLabel.Position = UDim2.new(0, 5, 0, 0)
-                nameLabel.BackgroundTransparency = 1
-                nameLabel.Text = player.Name
-                nameLabel.TextColor3 = Config.TextColor
-                nameLabel.Font = Enum.Font.Gotham
-                nameLabel.TextXAlignment = Enum.TextXAlignment.Left
-                nameLabel.ZIndex = 5
-                nameLabel.Parent = row
-                local stealBtn = Instance.new("TextButton")
-                stealBtn.Size = UDim2.new(0, 80, 0, 32)
-                stealBtn.Position = UDim2.new(1, -90, 0.5, -16)
-                stealBtn.BackgroundColor3 = Color3.fromRGB(255, 150, 0)
-                stealBtn.Text = "💰 ดึงเงิน"
-                stealBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                stealBtn.TextSize = 12
-                stealBtn.Font = Enum.Font.GothamBold
-                stealBtn.ZIndex = 5
-                stealBtn.Parent = row
-                Instance.new("UICorner", stealBtn).CornerRadius = UDim.new(0, 6)
-                stealBtn.MouseButton1Click:Connect(function() StealMoneyFromPlayer(player) end)
-            end
-        end
-    end
-    CreateButton(page, "🔄 รีเฟรช", function() Refresh() end)
-    Players.PlayerAdded:Connect(function() task.wait(0.5); Refresh() end)
-    Players.PlayerRemoving:Connect(function() task.wait(0.5); Refresh() end)
-    task.wait(0.1)
-    Refresh()
-end)
-
--- ==========================================
 -- เมนู: ผู้เล่น
 -- ==========================================
-CreateSidebarButton("👥 ผู้เล่น", 5, function()
+CreateSidebarButton("👥 ผู้เล่น", 2, function()
     local page = CreatePage("รายชื่อผู้เล่น")
     local refreshBtn = Instance.new("TextButton")
     refreshBtn.Size = UDim2.new(1, 0, 0, 35)
@@ -1501,7 +1135,7 @@ CreateSidebarButton("👥 ผู้เล่น", 5, function()
     refreshBtn.ZIndex = 6
     refreshBtn.Parent = page
     Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 8)
-    
+
     local playerListFrame = Instance.new("Frame")
     playerListFrame.Size = UDim2.new(1, 0, 0, 350)
     playerListFrame.BackgroundColor3 = Config.BgColor
@@ -1512,7 +1146,7 @@ CreateSidebarButton("👥 ผู้เล่น", 5, function()
     local listLayout = Instance.new("UIListLayout")
     listLayout.Padding = UDim.new(0, 5)
     listLayout.Parent = playerListFrame
-    
+
     local function Refresh()
         for _, v in pairs(playerListFrame:GetChildren()) do
             if v:IsA("Frame") then v:Destroy() end
@@ -1580,7 +1214,7 @@ end)
 -- ==========================================
 -- เมนู: ผู้เล่น/บิน
 -- ==========================================
-CreateSidebarButton("👤 ผู้เล่น/บิน", 6, function()
+CreateSidebarButton("👤 ผู้เล่น/บิน", 3, function()
     local page = CreatePage("ผู้เล่น & การเคลื่อนที่")
     CreateTextBox(page, "⚡ Speed (0-1000)", "SpeedValue", 500, 1000, function(value)
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
@@ -1620,7 +1254,7 @@ end)
 -- ==========================================
 -- เมนู: เส้นมอง
 -- ==========================================
-CreateSidebarButton("👁️ เส้นมอง", 7, function()
+CreateSidebarButton("👁️ เส้นมอง", 4, function()
     local page = CreatePage("เส้นมอง (ESP)")
     CreateToggle(page, "เปิด/ปิด เส้นมอง", "ESP_Enabled", false, function(state) end)
     CreateToggle(page, "เปิด/ปิด กล่อง", "ESP_Box", false, function(state) end)
@@ -1662,11 +1296,11 @@ CreateSidebarButton("👁️ เส้นมอง", 7, function()
 end)
 
 -- ==========================================
--- ✅ เมนู: ตั้งค่า (มี Graphics + RTX + Sky)
+-- เมนู: ตั้งค่า (Graphics + RTX + Sky แบบเลือกได้)
 -- ==========================================
-CreateSidebarButton("⚙️ ตั้งค่า", 8, function()
+CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
     local page = CreatePage("ตั้งค่า")
-    
+
     -- ============ ภาพสวย (Graphics) ============
     local gfxLabel = Instance.new("TextLabel")
     gfxLabel.Size = UDim2.new(1, 0, 0, 25)
@@ -1678,7 +1312,7 @@ CreateSidebarButton("⚙️ ตั้งค่า", 8, function()
     gfxLabel.TextXAlignment = Enum.TextXAlignment.Left
     gfxLabel.ZIndex = 3
     gfxLabel.Parent = page
-    
+
     CreateButton(page, "🎨 Cartoon (การ์ตูน)", function() EnableGraphics("Cartoon") end)
     CreateButton(page, "📷 Realistic (สมจริง)", function() EnableGraphics("Realistic") end)
     CreateButton(page, "🌸 Anime (อนิเมะ)", function() EnableGraphics("Anime") end)
@@ -1693,7 +1327,7 @@ CreateSidebarButton("⚙️ ตั้งค่า", 8, function()
         end)
         SendNotification("Graphics", "รีเซ็ตแล้ว", 2)
     end)
-    
+
     -- ============ RTX ============
     local rtxLabel = Instance.new("TextLabel")
     rtxLabel.Size = UDim2.new(1, 0, 0, 25)
@@ -1705,30 +1339,76 @@ CreateSidebarButton("⚙️ ตั้งค่า", 8, function()
     rtxLabel.TextXAlignment = Enum.TextXAlignment.Left
     rtxLabel.ZIndex = 3
     rtxLabel.Parent = page
-    
+
     CreateButton(page, "🎬 เปิด RTX", function() EnableRTX() end)
     CreateButton(page, "❌ ปิด RTX", function() DisableRTX() end)
-    
+
     -- ============ ท้องฟ้า (Sky) ============
     local skyLabel = Instance.new("TextLabel")
     skyLabel.Size = UDim2.new(1, 0, 0, 25)
     skyLabel.BackgroundTransparency = 1
-    skyLabel.Text = "🌌 ท้องฟ้า (Sky)"
+    skyLabel.Text = "🌌 ท้องฟ้า (Sky) — เลือกได้ทีละอัน"
     skyLabel.TextColor3 = Config.TextColor
     skyLabel.TextSize = 15
     skyLabel.Font = Enum.Font.GothamBold
     skyLabel.TextXAlignment = Enum.TextXAlignment.Left
     skyLabel.ZIndex = 3
     skyLabel.Parent = page
-    
-    CreateButton(page, "🌅 Sunset (พระอาทิตย์ตก)", function() SetSky("Sunset") end)
-    CreateButton(page, "🌌 Space (อวกาศ)", function() SetSky("Space") end)
-    CreateButton(page, "🌙 Night (กลางคืน)", function() SetSky("Night") end)
-    CreateButton(page, "☁️ Cloudy (เมฆ)", function() SetSky("Cloudy") end)
-    CreateButton(page, "☀️ Sunny (แดดจ้า)", function() SetSky("Sunny") end)
-    CreateButton(page, "🌸 Pink (ชมพู)", function() SetSky("Pink") end)
-    CreateButton(page, "🔄 รีเซ็ตท้องฟ้า", function() ResetSky() end)
-    
+
+    -- สร้างปุ่มท้องฟ้าแบบเลือกได้ (radio-style)
+    local skyButtons = {}
+    local skyNames = {"Sunset", "Space", "Night", "Cloudy", "Sunny", "Pink"}
+    local skyLabels = {
+        Sunset = "🌅 Sunset (พระอาทิตย์ตก)",
+        Space  = "🌌 Space (อวกาศ)",
+        Night  = "🌙 Night (กลางคืน)",
+        Cloudy = "☁️ Cloudy (เมฆ)",
+        Sunny  = "☀️ Sunny (แดดจ้า)",
+        Pink   = "🌸 Pink (ชมพู)"
+    }
+
+    local function RefreshSkyButtons()
+        for name, btn in pairs(skyButtons) do
+            if Config.SkySelection == name then
+                btn.BackgroundColor3 = Config.ThemeColor
+                btn.TextColor3 = Color3.fromRGB(255, 255, 255)
+            else
+                btn.BackgroundColor3 = Color3.fromRGB(40, 35, 60)
+                btn.TextColor3 = Config.TextDim
+            end
+        end
+    end
+
+    for _, skyName in ipairs(skyNames) do
+        local btn = Instance.new("TextButton")
+        btn.Size = UDim2.new(1, 0, 0, 35)
+        btn.BackgroundColor3 = Color3.fromRGB(40, 35, 60)
+        btn.Text = skyLabels[skyName]
+        btn.TextColor3 = Config.TextDim
+        btn.TextSize = 14
+        btn.Font = Enum.Font.GothamBold
+        btn.ZIndex = 6
+        btn.Active = true
+        btn.AutoButtonColor = false
+        btn.Parent = page
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+        skyButtons[skyName] = btn
+        btn.MouseButton1Click:Connect(function()
+            -- ถ้ากดซ้ำอันเดิม => ยกเลิก (ซ่อน)
+            if Config.SkySelection == skyName then
+                ApplySky("None")
+            else
+                ApplySky(skyName)
+            end
+            RefreshSkyButtons()
+        end)
+    end
+
+    CreateButton(page, "🔄 รีเซ็ตท้องฟ้า", function()
+        ResetSky()
+        RefreshSkyButtons()
+    end)
+
     -- ============ อื่นๆ ============
     local otherLabel = Instance.new("TextLabel")
     otherLabel.Size = UDim2.new(1, 0, 0, 25)
@@ -1740,7 +1420,7 @@ CreateSidebarButton("⚙️ ตั้งค่า", 8, function()
     otherLabel.TextXAlignment = Enum.TextXAlignment.Left
     otherLabel.ZIndex = 3
     otherLabel.Parent = page
-    
+
     CreateToggle(page, "⚡ แก้กระตุก", "AntiLagEnabled", false, function(state)
         if state then EnableAntiLag() else DisableAntiLag() end
     end)
@@ -1749,15 +1429,18 @@ CreateSidebarButton("⚙️ ตั้งค่า", 8, function()
     end)
     CreateToggle(page, "📊 FPS", "FPSEnabled", false, function(state) FPSLabel.Visible = state end)
     CreateToggle(page, "🌈 FPS RGB", "FPSRGB", false, function(state) end)
-    
+
     CreateButton(page, "❌ ทำลาย UI", function()
         if FOVCircle then FOVCircle:Remove() end
         if TargetSnapLine then TargetSnapLine:Remove() end
         for _, data in pairs(espDrawings) do
             for _, obj in pairs(data) do pcall(function() obj:Remove() end) end
         end
+        ClearAllCustomSkies()
         ScreenGui:Destroy()
     end)
+
+    RefreshSkyButtons()
 end)
 
 local firstBtn = Sidebar:GetChildren()[1]
@@ -1803,7 +1486,7 @@ RunService.RenderStepped:Connect(function()
             end
         end
         currentLockedTarget = closestPlayer
-        
+
         if closestPlayer and closestPlayer.Character then
             local targetPart = GetTargetPart(closestPlayer.Character)
             if targetPart then
@@ -1922,5 +1605,5 @@ task.spawn(function()
     if LoadingGui then LoadingGui:Destroy() end
     if ToggleButton then ToggleButton.Visible = true end
     if MainFrame then MainFrame.Visible = true end
-    SendNotification("ยินดีต้อนรับ", "🐱 แมวส้ม Script Hub v42 พร้อมใช้!", 3)
+    SendNotification("ยินดีต้อนรับ", "🐱 แมวส้ม Script Hub Slim พร้อมใช้!", 3)
 end)
