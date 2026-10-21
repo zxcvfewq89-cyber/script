@@ -1,7 +1,6 @@
 -- ==========================================
--- 🐱 แมวส้ม Script Hub - Slim Edition
--- (ลบเมนู เสกของ / ขโมยไข่ / ดึงเงิน ออกแล้ว)
--- (ระบบท้องฟ้า: เลือกได้ทีละอัน แสดงเฉพาะที่เลือก)
+-- 🐱 แมวส้ม Script Hub - Mobile Slim v2
+-- (UI ย่อสำหรับมือถือ + Sky ใช้งานได้จริง)
 -- ==========================================
 
 local Players = game:GetService("Players")
@@ -11,10 +10,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local Workspace = game:GetService("Workspace")
-local HttpService = game:GetService("HttpService")
-local GuiService = game:GetService("GuiService")
 local Lighting = game:GetService("Lighting")
-local TeleportService = game:GetService("TeleportService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local hasHook = (hookmetamethod ~= nil) and (hookfunction ~= nil)
@@ -23,18 +19,21 @@ if LocalPlayer.PlayerGui:FindFirstChild("AnimeScriptHub") then
     LocalPlayer.PlayerGui.AnimeScriptHub:Destroy()
 end
 
+local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
+local isSmallScreen = (Camera.ViewportSize.X < 900) or isMobile
+
 -- ==========================================
 -- Config
 -- ==========================================
 local Config = {
     AimbotEnabled = false, AimPart = "Head", FOVCircleRadius = 250,
     LockStrength = 90, WallCheck = true,
-    BulletHomingEnabled = false, BulletSpeed = 500,
+    BulletHomingEnabled = false,
     ESP_Enabled = false, ESP_Box = false, ESP_Health = false,
     ESP_LineColor = Color3.fromRGB(255, 0, 255), ESP_LineMode = "Bottom",
     LineThickness = 1.5,
     SpeedEnabled = false, SpeedValue = 500, SpeedBypass = true,
-    FlyEnabled = false, FlySpeed = 100, FlyHeight = 20,
+    FlyEnabled = false, FlySpeed = 100,
     AntiLagEnabled = false,
     AFKEnabled = false,
     FPSEnabled = false, FPSRGB = false, FPSColor = Color3.fromRGB(0, 255, 0),
@@ -42,7 +41,7 @@ local Config = {
     BgColor = Color3.fromRGB(20, 15, 35),
     TextColor = Color3.fromRGB(240, 240, 255),
     TextDim = Color3.fromRGB(160, 160, 190),
-    SkySelection = "None" -- ค่าเริ่มต้น: ไม่มีท้องฟ้าถูกเลือก
+    SkySelection = "None"
 }
 
 local currentLockedTarget = nil
@@ -59,6 +58,7 @@ ScreenGui.ResetOnSpawn = false
 ScreenGui.DisplayOrder = 999999
 ScreenGui.IgnoreGuiInset = true
 
+-- Drawing API
 local FOVCircle, TargetSnapLine
 pcall(function()
     FOVCircle = Drawing.new("Circle")
@@ -76,7 +76,7 @@ pcall(function()
 end)
 
 -- ==========================================
--- SendNotification
+-- SendNotification (ปรับขนาดตามจอ)
 -- ==========================================
 local function SendNotification(title, content, duration)
     duration = duration or 3
@@ -85,48 +85,48 @@ local function SendNotification(title, content, duration)
         if not NotifContainer then
             NotifContainer = Instance.new("Frame")
             NotifContainer.Name = "NotifContainer"
-            NotifContainer.Size = UDim2.new(0, 260, 1, 0)
-            NotifContainer.Position = UDim2.new(1, -275, 0, 10)
+            NotifContainer.Size = UDim2.new(0, isSmallScreen and 200 or 260, 1, 0)
+            NotifContainer.Position = UDim2.new(1, isSmallScreen and -210 or -275, 0, 10)
             NotifContainer.BackgroundTransparency = 1
             NotifContainer.ZIndex = 200
             NotifContainer.Parent = ScreenGui
             local layout = Instance.new("UIListLayout")
             layout.SortOrder = Enum.SortOrder.LayoutOrder
             layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-            layout.Padding = UDim.new(0, 8)
+            layout.Padding = UDim.new(0, 6)
             layout.Parent = NotifContainer
         end
         local NotifBox = Instance.new("Frame")
-        NotifBox.Size = UDim2.new(1, 0, 0, 65)
+        NotifBox.Size = UDim2.new(1, 0, 0, isSmallScreen and 55 or 65)
         NotifBox.BackgroundColor3 = Config.BgColor
         NotifBox.BackgroundTransparency = 0.15
-        NotifBox.Position = UDim2.new(1, 50, 0, 0)
+        NotifBox.Position = UDim2.new(1, 40, 0, 0)
         NotifBox.ZIndex = 200
         NotifBox.Parent = NotifContainer
-        Instance.new("UICorner", NotifBox).CornerRadius = UDim.new(0, 10)
+        Instance.new("UICorner", NotifBox).CornerRadius = UDim.new(0, 8)
         local boxStroke = Instance.new("UIStroke")
         boxStroke.Color = Config.ThemeColor
-        boxStroke.Thickness = 1.5
+        boxStroke.Thickness = 1.2
         boxStroke.Transparency = 0.3
         boxStroke.Parent = NotifBox
         local tLabel = Instance.new("TextLabel")
-        tLabel.Size = UDim2.new(1, -50, 0, 20)
-        tLabel.Position = UDim2.new(0, 48, 0, 8)
+        tLabel.Size = UDim2.new(1, -40, 0, 18)
+        tLabel.Position = UDim2.new(0, 38, 0, 6)
         tLabel.BackgroundTransparency = 1
         tLabel.Text = title
         tLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        tLabel.TextSize = 14
+        tLabel.TextSize = 12
         tLabel.Font = Enum.Font.GothamBold
         tLabel.TextXAlignment = Enum.TextXAlignment.Left
         tLabel.ZIndex = 200
         tLabel.Parent = NotifBox
         local cLabel = Instance.new("TextLabel")
-        cLabel.Size = UDim2.new(1, -50, 0, 25)
-        cLabel.Position = UDim2.new(0, 48, 0, 28)
+        cLabel.Size = UDim2.new(1, -40, 0, 22)
+        cLabel.Position = UDim2.new(0, 38, 0, 24)
         cLabel.BackgroundTransparency = 1
         cLabel.Text = content
         cLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-        cLabel.TextSize = 12
+        cLabel.TextSize = 10
         cLabel.Font = Enum.Font.Gotham
         cLabel.TextXAlignment = Enum.TextXAlignment.Left
         cLabel.TextWrapped = true
@@ -135,7 +135,7 @@ local function SendNotification(title, content, duration)
         NotifBox:TweenPosition(UDim2.new(0, 0, 0, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.3, true)
         task.delay(duration, function()
             pcall(function()
-                NotifBox:TweenPosition(UDim2.new(1, 50, 0, 0), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.3, true)
+                NotifBox:TweenPosition(UDim2.new(1, 40, 0, 0), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.3, true)
                 task.wait(0.3)
                 NotifBox:Destroy()
             end)
@@ -212,18 +212,18 @@ end
 -- FPS Counter
 -- ==========================================
 local FPSLabel = Instance.new("TextLabel")
-FPSLabel.Size = UDim2.new(0, 120, 0, 30)
-FPSLabel.Position = UDim2.new(1, -130, 0, 10)
+FPSLabel.Size = UDim2.new(0, isSmallScreen and 85 or 120, 0, isSmallScreen and 22 or 30)
+FPSLabel.Position = UDim2.new(1, isSmallScreen and -90 or -130, 0, 10)
 FPSLabel.BackgroundColor3 = Config.BgColor
 FPSLabel.BackgroundTransparency = 0.3
 FPSLabel.Text = "FPS: --"
 FPSLabel.TextColor3 = Config.FPSColor
-FPSLabel.TextSize = 14
+FPSLabel.TextSize = isSmallScreen and 11 or 14
 FPSLabel.Font = Enum.Font.GothamBold
 FPSLabel.Visible = false
 FPSLabel.ZIndex = 150
 FPSLabel.Parent = ScreenGui
-Instance.new("UICorner", FPSLabel).CornerRadius = UDim.new(0, 6)
+Instance.new("UICorner", FPSLabel).CornerRadius = UDim.new(0, 5)
 
 local function HSVtoRGB(h, s, v)
     local r, g, b
@@ -264,34 +264,34 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- Loading Screen
+-- Loading Screen (เล็กกระทัดรัด)
 -- ==========================================
 local LoadingGui = Instance.new("Frame")
-LoadingGui.Size = UDim2.new(0, 360, 0, 180)
-LoadingGui.Position = UDim2.new(0.5, -180, 0.5, -90)
+LoadingGui.Size = UDim2.new(0, isSmallScreen and 240 or 340, 0, isSmallScreen and 120 or 170)
+LoadingGui.Position = UDim2.new(0.5, -(isSmallScreen and 120 or 170), 0.5, -(isSmallScreen and 60 or 85))
 LoadingGui.BackgroundColor3 = Config.BgColor
 LoadingGui.BackgroundTransparency = 0.15
 LoadingGui.ZIndex = 100
 LoadingGui.Parent = ScreenGui
-Instance.new("UICorner", LoadingGui).CornerRadius = UDim.new(0, 12)
+Instance.new("UICorner", LoadingGui).CornerRadius = UDim.new(0, 10)
 local loadStroke = Instance.new("UIStroke")
 loadStroke.Color = Config.ThemeColor
-loadStroke.Thickness = 2
+loadStroke.Thickness = 1.5
 loadStroke.Transparency = 0.3
 loadStroke.Parent = LoadingGui
 local StatusText = Instance.new("TextLabel")
-StatusText.Size = UDim2.new(1, 0, 0, 25)
-StatusText.Position = UDim2.new(0, 0, 0, 80)
+StatusText.Size = UDim2.new(1, 0, 0, 20)
+StatusText.Position = UDim2.new(0, 0, 0, isSmallScreen and 50 or 75)
 StatusText.BackgroundTransparency = 1
 StatusText.Text = "กำลังโหลดระบบ..."
 StatusText.TextColor3 = Color3.fromRGB(255, 255, 255)
-StatusText.TextSize = 14
+StatusText.TextSize = isSmallScreen and 11 or 14
 StatusText.Font = Enum.Font.GothamBold
 StatusText.ZIndex = 101
 StatusText.Parent = LoadingGui
 local BarBg = Instance.new("Frame")
-BarBg.Size = UDim2.new(0.8, 0, 0, 12)
-BarBg.Position = UDim2.new(0.1, 0, 0, 125)
+BarBg.Size = UDim2.new(0.8, 0, 0, 10)
+BarBg.Position = UDim2.new(0.1, 0, 0, isSmallScreen and 85 or 120)
 BarBg.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 BarBg.BackgroundTransparency = 0.5
 BarBg.ZIndex = 101
@@ -305,11 +305,16 @@ BarFill.Parent = BarBg
 Instance.new("UICorner", BarFill).CornerRadius = UDim.new(1, 0)
 
 -- ==========================================
--- Main Frame
+-- Main Frame (ขนาดขึ้นกับจอ)
 -- ==========================================
+local frameW = isSmallScreen and 330 or 560
+local frameH = isSmallScreen and 260 or 400
+local sidebarW = isSmallScreen and 88 or 130
+local headerH = isSmallScreen and 40 or 48
+
 local MainFrame = Instance.new("Frame")
-MainFrame.Size = UDim2.new(0, 600, 0, 420)
-MainFrame.Position = UDim2.new(0.5, -300, 0.5, -210)
+MainFrame.Size = UDim2.new(0, frameW, 0, frameH)
+MainFrame.Position = UDim2.new(0.5, -frameW/2, 0.5, -frameH/2)
 MainFrame.BackgroundColor3 = Config.BgColor
 MainFrame.BackgroundTransparency = 0.15
 MainFrame.Visible = false
@@ -317,78 +322,69 @@ MainFrame.ClipsDescendants = true
 MainFrame.ZIndex = 10
 MainFrame.Active = true
 MainFrame.Parent = ScreenGui
-Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 16)
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 12)
 local mainStroke = Instance.new("UIStroke")
 mainStroke.Color = Config.ThemeColor
-mainStroke.Thickness = 1.5
+mainStroke.Thickness = 1.2
 mainStroke.Transparency = 0.3
 mainStroke.Parent = MainFrame
-
-local MainBg = Instance.new("ImageLabel")
-MainBg.Size = UDim2.new(1, 0, 1, 0)
-MainBg.BackgroundTransparency = 1
-MainBg.Image = "rbxassetid://16255492011"
-MainBg.ImageTransparency = 0.6
-MainBg.ScaleType = Enum.ScaleType.Crop
-MainBg.ZIndex = 0
-MainBg.Parent = MainFrame
 
 local MainOverlay = Instance.new("Frame")
 MainOverlay.Size = UDim2.new(1, 0, 1, 0)
 MainOverlay.BackgroundColor3 = Config.BgColor
-MainOverlay.BackgroundTransparency = 0.3
+MainOverlay.BackgroundTransparency = 0.2
 MainOverlay.ZIndex = 1
 MainOverlay.Parent = MainFrame
 
 -- Header
 local HeaderBar = Instance.new("Frame")
-HeaderBar.Size = UDim2.new(1, 0, 0, 50)
+HeaderBar.Size = UDim2.new(1, 0, 0, headerH)
 HeaderBar.BackgroundColor3 = Config.BgColor
-HeaderBar.BackgroundTransparency = 0.4
+HeaderBar.BackgroundTransparency = 0.35
 HeaderBar.ZIndex = 2
 HeaderBar.Parent = MainFrame
-Instance.new("UICorner", HeaderBar).CornerRadius = UDim.new(0, 16)
+Instance.new("UICorner", HeaderBar).CornerRadius = UDim.new(0, 12)
 local headerFix = Instance.new("Frame")
-headerFix.Size = UDim2.new(1, 0, 0, 16)
-headerFix.Position = UDim2.new(0, 0, 1, -16)
+headerFix.Size = UDim2.new(1, 0, 0, 12)
+headerFix.Position = UDim2.new(0, 0, 1, -12)
 headerFix.BackgroundColor3 = Config.BgColor
-headerFix.BackgroundTransparency = 0.4
+headerFix.BackgroundTransparency = 0.35
 headerFix.ZIndex = 2
 headerFix.Parent = HeaderBar
 local HeaderIcon = Instance.new("ImageLabel")
-HeaderIcon.Size = UDim2.new(0, 35, 0, 35)
-HeaderIcon.Position = UDim2.new(0, 15, 0.5, -17.5)
+HeaderIcon.Size = UDim2.new(0, isSmallScreen and 24 or 30, 0, isSmallScreen and 24 or 30)
+HeaderIcon.Position = UDim2.new(0, isSmallScreen and 8 or 12, 0.5, -(isSmallScreen and 12 or 15))
 HeaderIcon.BackgroundTransparency = 1
 HeaderIcon.Image = "rbxassetid://103628356622817"
 HeaderIcon.ZIndex = 3
 HeaderIcon.Parent = HeaderBar
 local HeaderTitle = Instance.new("TextLabel")
-HeaderTitle.Size = UDim2.new(1, -100, 1, 0)
-HeaderTitle.Position = UDim2.new(0, 60, 0, 0)
+HeaderTitle.Size = UDim2.new(1, -80, 1, 0)
+HeaderTitle.Position = UDim2.new(0, isSmallScreen and 38 or 48, 0, 0)
 HeaderTitle.BackgroundTransparency = 1
-HeaderTitle.Text = "🐱 แมวส้ม Script Hub"
+HeaderTitle.Text = "🐱 แมวส้ม Hub"
 HeaderTitle.TextColor3 = Config.TextColor
-HeaderTitle.TextSize = 18
+HeaderTitle.TextSize = isSmallScreen and 13 or 16
 HeaderTitle.Font = Enum.Font.GothamBold
 HeaderTitle.TextXAlignment = Enum.TextXAlignment.Left
 HeaderTitle.ZIndex = 3
 HeaderTitle.Parent = HeaderBar
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, 35, 0, 35)
-CloseBtn.Position = UDim2.new(1, -45, 0.5, -17.5)
+CloseBtn.Size = UDim2.new(0, isSmallScreen and 30 or 32, 0, isSmallScreen and 30 or 32)
+CloseBtn.Position = UDim2.new(1, -(isSmallScreen and 38 or 44), 0.5, -(isSmallScreen and 15 or 16))
 CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
 CloseBtn.Text = "X"
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.TextSize = 18
+CloseBtn.TextSize = isSmallScreen and 14 or 16
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.ZIndex = 10
 CloseBtn.Active = true
 CloseBtn.AutoButtonColor = false
 CloseBtn.Parent = HeaderBar
-Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 8)
+Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
 CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
 
--- Drag
+-- Drag (header)
 local dragging = false
 local dragStart, startPos
 HeaderBar.InputBegan:Connect(function(input)
@@ -412,40 +408,40 @@ end)
 
 -- Sidebar
 local Sidebar = Instance.new("ScrollingFrame")
-Sidebar.Size = UDim2.new(0, 140, 1, -50)
-Sidebar.Position = UDim2.new(0, 0, 0, 50)
+Sidebar.Size = UDim2.new(0, sidebarW, 1, -headerH)
+Sidebar.Position = UDim2.new(0, 0, 0, headerH)
 Sidebar.BackgroundColor3 = Config.BgColor
-Sidebar.BackgroundTransparency = 0.6
+Sidebar.BackgroundTransparency = 0.5
 Sidebar.ZIndex = 2
 Sidebar.BorderSizePixel = 0
-Sidebar.ScrollBarThickness = 3
+Sidebar.ScrollBarThickness = 2
 Sidebar.ScrollBarImageColor3 = Config.ThemeColor
 Sidebar.CanvasSize = UDim2.new(0, 0, 0, 0)
 Sidebar.Parent = MainFrame
 local sidebarLayout = Instance.new("UIListLayout")
 sidebarLayout.SortOrder = Enum.SortOrder.LayoutOrder
-sidebarLayout.Padding = UDim.new(0, 5)
+sidebarLayout.Padding = UDim.new(0, 3)
 sidebarLayout.Parent = Sidebar
 local sidebarPadding = Instance.new("UIPadding")
-sidebarPadding.PaddingTop = UDim.new(0, 5)
-sidebarPadding.PaddingLeft = UDim.new(0, 5)
-sidebarPadding.PaddingRight = UDim.new(0, 5)
+sidebarPadding.PaddingTop = UDim.new(0, 3)
+sidebarPadding.PaddingLeft = UDim.new(0, 3)
+sidebarPadding.PaddingRight = UDim.new(0, 3)
 sidebarPadding.Parent = Sidebar
 sidebarLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-    Sidebar.CanvasSize = UDim2.new(0, 0, 0, sidebarLayout.AbsoluteContentSize.Y + 10)
+    Sidebar.CanvasSize = UDim2.new(0, 0, 0, sidebarLayout.AbsoluteContentSize.Y + 6)
 end)
 
 local ContentContainer = Instance.new("Frame")
-ContentContainer.Size = UDim2.new(1, -140, 1, -50)
-ContentContainer.Position = UDim2.new(0, 140, 0, 50)
+ContentContainer.Size = UDim2.new(1, -sidebarW, 1, -headerH)
+ContentContainer.Position = UDim2.new(0, sidebarW, 0, headerH)
 ContentContainer.BackgroundTransparency = 1
 ContentContainer.ZIndex = 2
 ContentContainer.Parent = MainFrame
 
--- Toggle Button
+-- Toggle Button (ลอย)
 local ToggleButton = Instance.new("ImageButton")
-ToggleButton.Size = UDim2.new(0, 60, 0, 60)
-ToggleButton.Position = UDim2.new(0.05, 0, 0.4, 0)
+ToggleButton.Size = UDim2.new(0, isSmallScreen and 44 or 54, 0, isSmallScreen and 44 or 54)
+ToggleButton.Position = UDim2.new(0, 10, 0.4, 0)
 ToggleButton.BackgroundColor3 = Config.BgColor
 ToggleButton.BackgroundTransparency = 0.2
 ToggleButton.Image = "rbxassetid://103628356622817"
@@ -459,7 +455,6 @@ Instance.new("UICorner", ToggleButton).CornerRadius = UDim.new(1, 0)
 local btnDragging = false
 local btnDragStart, btnStartPos
 local btnMoved = false
-
 ToggleButton.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         btnDragging = true
@@ -477,22 +472,22 @@ end)
 UserInputService.InputChanged:Connect(function(input)
     if btnDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
         local delta = input.Position - btnDragStart
-        if math.abs(delta.X) > 10 or math.abs(delta.Y) > 10 then btnMoved = true end
+        if math.abs(delta.X) > 8 or math.abs(delta.Y) > 8 then btnMoved = true end
         ToggleButton.Position = UDim2.new(btnStartPos.X.Scale, btnStartPos.X.Offset + delta.X, btnStartPos.Y.Scale, btnStartPos.Y.Offset + delta.Y)
     end
 end)
 
 -- ==========================================
--- UI Components
+-- UI Components (ย่อขนาด)
 -- ==========================================
 local function CreateSidebarButton(name, order, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 42)
+    btn.Size = UDim2.new(1, 0, 0, isSmallScreen and 34 or 38)
     btn.BackgroundColor3 = Config.BgColor
     btn.BackgroundTransparency = 0.8
     btn.Text = "  " .. name
     btn.TextColor3 = Config.TextDim
-    btn.TextSize = 13
+    btn.TextSize = isSmallScreen and 10 or 12
     btn.Font = Enum.Font.Gotham
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.LayoutOrder = order
@@ -500,7 +495,7 @@ local function CreateSidebarButton(name, order, callback)
     btn.Active = true
     btn.AutoButtonColor = false
     btn.Parent = Sidebar
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     local indicator = Instance.new("Frame")
     indicator.Size = UDim2.new(0, 3, 0.6, 0)
     indicator.Position = UDim2.new(0, 0, 0.2, 0)
@@ -528,7 +523,7 @@ end
 
 local function CreateToggle(parent, text, flagName, defaultState, callback)
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -20, 0, 40)
+    container.Size = UDim2.new(1, -12, 0, isSmallScreen and 32 or 36)
     container.BackgroundTransparency = 1
     container.ZIndex = 3
     container.Parent = parent
@@ -537,7 +532,7 @@ local function CreateToggle(parent, text, flagName, defaultState, callback)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = Config.TextColor
-    label.TextSize = 14
+    label.TextSize = isSmallScreen and 11 or 13
     label.Font = Enum.Font.Gotham
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 3
@@ -545,8 +540,8 @@ local function CreateToggle(parent, text, flagName, defaultState, callback)
     local currentState = Config[flagName]
     if currentState == nil then currentState = defaultState end
     local toggleBtn = Instance.new("TextButton")
-    toggleBtn.Size = UDim2.new(0, 45, 0, 24)
-    toggleBtn.Position = UDim2.new(1, -45, 0.5, -12)
+    toggleBtn.Size = UDim2.new(0, isSmallScreen and 36 or 42, 0, isSmallScreen and 20 or 22)
+    toggleBtn.Position = UDim2.new(1, -(isSmallScreen and 36 or 42), 0.5, -(isSmallScreen and 10 or 11))
     toggleBtn.BackgroundColor3 = currentState and Config.ThemeColor or Color3.fromRGB(60, 55, 80)
     toggleBtn.Text = ""
     toggleBtn.ZIndex = 6
@@ -555,8 +550,8 @@ local function CreateToggle(parent, text, flagName, defaultState, callback)
     toggleBtn.Parent = container
     Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
     local knob = Instance.new("Frame")
-    knob.Size = UDim2.new(0, 18, 0, 18)
-    knob.Position = currentState and UDim2.new(1, -21, 0.5, -9) or UDim2.new(0, 3, 0.5, -9)
+    knob.Size = UDim2.new(0, isSmallScreen and 15 or 17, 0, isSmallScreen and 15 or 17)
+    knob.Position = currentState and UDim2.new(1, -(isSmallScreen and 17 or 19), 0.5, -(isSmallScreen and 7.5 or 8.5)) or UDim2.new(0, 2, 0.5, -(isSmallScreen and 7.5 or 8.5))
     knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     knob.ZIndex = 7
     knob.Parent = toggleBtn
@@ -566,10 +561,10 @@ local function CreateToggle(parent, text, flagName, defaultState, callback)
         Config[flagName] = currentState
         if currentState then
             toggleBtn.BackgroundColor3 = Config.ThemeColor
-            TweenService:Create(knob, TweenInfo.new(0.2), {Position = UDim2.new(1, -21, 0.5, -9)}):Play()
+            TweenService:Create(knob, TweenInfo.new(0.15), {Position = UDim2.new(1, -(isSmallScreen and 17 or 19), 0.5, -(isSmallScreen and 7.5 or 8.5))}):Play()
         else
             toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 55, 80)
-            TweenService:Create(knob, TweenInfo.new(0.2), {Position = UDim2.new(0, 3, 0.5, -9)}):Play()
+            TweenService:Create(knob, TweenInfo.new(0.15), {Position = UDim2.new(0, 2, 0.5, -(isSmallScreen and 7.5 or 8.5))}):Play()
         end
         if callback then callback(currentState) end
     end)
@@ -577,25 +572,25 @@ end
 
 local function CreateSlider(parent, text, min, max, flagName, default, callback)
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -20, 0, 50)
+    container.Size = UDim2.new(1, -12, 0, isSmallScreen and 42 or 46)
     container.BackgroundTransparency = 1
     container.ZIndex = 3
     container.Parent = parent
     local currentValue = Config[flagName]
     if currentValue == nil then currentValue = default end
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, 20)
+    label.Size = UDim2.new(1, 0, 0, isSmallScreen and 16 or 18)
     label.BackgroundTransparency = 1
     label.Text = text .. ": " .. currentValue
     label.TextColor3 = Config.TextDim
-    label.TextSize = 13
+    label.TextSize = isSmallScreen and 10 or 12
     label.Font = Enum.Font.Gotham
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 3
     label.Parent = container
     local sliderBg = Instance.new("Frame")
-    sliderBg.Size = UDim2.new(1, 0, 0, 15)
-    sliderBg.Position = UDim2.new(0, 0, 0, 25)
+    sliderBg.Size = UDim2.new(1, 0, 0, isSmallScreen and 10 or 12)
+    sliderBg.Position = UDim2.new(0, 0, 0, isSmallScreen and 20 or 22)
     sliderBg.BackgroundColor3 = Color3.fromRGB(40, 35, 60)
     sliderBg.ZIndex = 3
     sliderBg.Parent = container
@@ -607,7 +602,8 @@ local function CreateSlider(parent, text, min, max, flagName, default, callback)
     fill.Parent = sliderBg
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
     local sliderBtn = Instance.new("TextButton")
-    sliderBtn.Size = UDim2.new(1, 0, 1, 0)
+    sliderBtn.Size = UDim2.new(1, 0, 1.8, 0)
+    sliderBtn.Position = UDim2.new(0, 0, -0.4, 0)
     sliderBtn.BackgroundTransparency = 1
     sliderBtn.Text = ""
     sliderBtn.ZIndex = 5
@@ -625,42 +621,42 @@ local function CreateSlider(parent, text, min, max, flagName, default, callback)
     end
     sliderBtn.MouseButton1Down:Connect(function() isDragging = true; updateSlider() end)
     UserInputService.InputChanged:Connect(function(input)
-        if isDragging and input.UserInputType == Enum.UserInputType.MouseMovement then updateSlider() end
+        if isDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then updateSlider() end
     end)
     UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then isDragging = false end
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then isDragging = false end
     end)
 end
 
 local function CreateTextBox(parent, text, flagName, default, maxVal, callback)
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -20, 0, 40)
+    container.Size = UDim2.new(1, -12, 0, isSmallScreen and 32 or 36)
     container.BackgroundTransparency = 1
     container.ZIndex = 3
     container.Parent = parent
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(0.5, 0, 1, 0)
+    label.Size = UDim2.new(0.55, 0, 1, 0)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = Config.TextColor
-    label.TextSize = 14
+    label.TextSize = isSmallScreen and 11 or 13
     label.Font = Enum.Font.Gotham
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 3
     label.Parent = container
     local currentValue = Config[flagName] or default
     local box = Instance.new("TextBox")
-    box.Size = UDim2.new(0.4, 0, 1, 0)
-    box.Position = UDim2.new(0.6, 0, 0, 0)
+    box.Size = UDim2.new(0.35, 0, 1, 0)
+    box.Position = UDim2.new(0.65, 0, 0, 0)
     box.BackgroundColor3 = Color3.fromRGB(40, 35, 60)
     box.Text = tostring(currentValue)
     box.TextColor3 = Config.TextColor
     box.PlaceholderText = "0-" .. maxVal
     box.Font = Enum.Font.Gotham
-    box.TextSize = 14
+    box.TextSize = isSmallScreen and 11 or 13
     box.ZIndex = 6
     box.Parent = container
-    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 6)
+    Instance.new("UICorner", box).CornerRadius = UDim.new(0, 5)
     box.FocusLost:Connect(function()
         local val = tonumber(box.Text)
         if val then
@@ -676,17 +672,17 @@ end
 
 local function CreateButton(parent, text, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, 35)
+    btn.Size = UDim2.new(1, 0, 0, isSmallScreen and 28 or 32)
     btn.BackgroundColor3 = Config.ThemeColor
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = 14
+    btn.TextSize = isSmallScreen and 10 or 12
     btn.Font = Enum.Font.GothamBold
     btn.ZIndex = 6
     btn.Active = true
     btn.AutoButtonColor = false
     btn.Parent = parent
-    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
     btn.MouseButton1Click:Connect(callback)
     return btn
 end
@@ -700,27 +696,27 @@ end
 local function CreatePage(title)
     ClearContent()
     local page = Instance.new("ScrollingFrame")
-    page.Size = UDim2.new(1, -20, 1, -20)
-    page.Position = UDim2.new(0, 10, 0, 10)
+    page.Size = UDim2.new(1, -12, 1, -12)
+    page.Position = UDim2.new(0, 6, 0, 6)
     page.BackgroundTransparency = 1
-    page.ScrollBarThickness = 3
+    page.ScrollBarThickness = 2
     page.ScrollBarImageColor3 = Config.ThemeColor
     page.ZIndex = 3
     page.CanvasSize = UDim2.new(0, 0, 0, 0)
     page.Parent = ContentContainer
     local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, 10)
+    layout.Padding = UDim.new(0, isSmallScreen and 6 or 8)
     layout.Parent = page
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 20)
+        page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 12)
     end)
     local header = Instance.new("TextLabel")
-    header.Size = UDim2.new(1, 0, 0, 30)
+    header.Size = UDim2.new(1, 0, 0, isSmallScreen and 22 or 26)
     header.BackgroundTransparency = 1
     header.Text = title
     header.TextColor3 = Config.TextColor
-    header.TextSize = 18
+    header.TextSize = isSmallScreen and 13 or 16
     header.Font = Enum.Font.GothamBold
     header.TextXAlignment = Enum.TextXAlignment.Left
     header.LayoutOrder = 1
@@ -732,7 +728,7 @@ end
 local function CreateESP(player)
     if espDrawings[player] then return end
     local line = Drawing.new("Line"); line.Visible = false
-    local text = Drawing.new("Text"); text.Size = 14; text.Center = true; text.Outline = true; text.Visible = false
+    local text = Drawing.new("Text"); text.Size = 13; text.Center = true; text.Outline = true; text.Visible = false
     local box = Drawing.new("Square"); box.Visible = false
     local healthBarBg = Drawing.new("Square"); healthBarBg.Visible = false
     local healthBar = Drawing.new("Square"); healthBar.Visible = false
@@ -813,91 +809,59 @@ local function EnableGraphics(mode)
         settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level04
         settings().Rendering.EditQualityLevel = 21
     end)
-    
+
     if mode == "Cartoon" then
         pcall(function()
             local cc = Instance.new("ColorCorrectionEffect")
-            cc.Name = "Gfx_CC"
-            cc.Brightness = 0.1
-            cc.Contrast = 0.4
-            cc.Saturation = 0.6
-            cc.TintColor = Color3.fromRGB(255, 240, 230)
-            cc.Parent = Lighting
-            table.insert(GraphicsEffects, cc)
+            cc.Name = "Gfx_CC"; cc.Brightness = 0.1; cc.Contrast = 0.4
+            cc.Saturation = 0.6; cc.TintColor = Color3.fromRGB(255, 240, 230)
+            cc.Parent = Lighting; table.insert(GraphicsEffects, cc)
             local bloom = Instance.new("BloomEffect")
-            bloom.Name = "Gfx_Bloom"
-            bloom.Intensity = 2
-            bloom.Size = 30
-            bloom.Threshold = 0.8
-            bloom.Parent = Lighting
+            bloom.Name = "Gfx_Bloom"; bloom.Intensity = 2; bloom.Size = 30
+            bloom.Threshold = 0.8; bloom.Parent = Lighting
             table.insert(GraphicsEffects, bloom)
-            Lighting.Brightness = 3
-            Lighting.Ambient = Color3.fromRGB(100, 90, 80)
+            Lighting.Brightness = 3; Lighting.Ambient = Color3.fromRGB(100, 90, 80)
         end)
     elseif mode == "Realistic" then
         pcall(function()
             local cc = Instance.new("ColorCorrectionEffect")
-            cc.Name = "Gfx_CC"
-            cc.Brightness = 0.02
-            cc.Contrast = 0.15
-            cc.Saturation = 0.2
-            cc.TintColor = Color3.fromRGB(250, 250, 255)
-            cc.Parent = Lighting
-            table.insert(GraphicsEffects, cc)
-            Lighting.Brightness = 2.5
-            Lighting.Ambient = Color3.fromRGB(80, 80, 90)
+            cc.Name = "Gfx_CC"; cc.Brightness = 0.02; cc.Contrast = 0.15
+            cc.Saturation = 0.2; cc.TintColor = Color3.fromRGB(250, 250, 255)
+            cc.Parent = Lighting; table.insert(GraphicsEffects, cc)
+            Lighting.Brightness = 2.5; Lighting.Ambient = Color3.fromRGB(80, 80, 90)
             Lighting.OutdoorAmbient = Color3.fromRGB(150, 150, 160)
             Lighting.GlobalShadows = true
         end)
     elseif mode == "Anime" then
         pcall(function()
             local cc = Instance.new("ColorCorrectionEffect")
-            cc.Name = "Gfx_CC"
-            cc.Brightness = 0.15
-            cc.Contrast = 0.5
-            cc.Saturation = 0.7
-            cc.TintColor = Color3.fromRGB(255, 200, 230)
-            cc.Parent = Lighting
-            table.insert(GraphicsEffects, cc)
+            cc.Name = "Gfx_CC"; cc.Brightness = 0.15; cc.Contrast = 0.5
+            cc.Saturation = 0.7; cc.TintColor = Color3.fromRGB(255, 200, 230)
+            cc.Parent = Lighting; table.insert(GraphicsEffects, cc)
             local bloom = Instance.new("BloomEffect")
-            bloom.Name = "Gfx_Bloom"
-            bloom.Intensity = 2.5
-            bloom.Size = 35
-            bloom.Threshold = 0.7
-            bloom.Parent = Lighting
+            bloom.Name = "Gfx_Bloom"; bloom.Intensity = 2.5; bloom.Size = 35
+            bloom.Threshold = 0.7; bloom.Parent = Lighting
             table.insert(GraphicsEffects, bloom)
             Lighting.Brightness = 3
         end)
     elseif mode == "Dark" then
         pcall(function()
             local cc = Instance.new("ColorCorrectionEffect")
-            cc.Name = "Gfx_CC"
-            cc.Brightness = -0.1
-            cc.Contrast = 0.3
-            cc.Saturation = 0.1
-            cc.TintColor = Color3.fromRGB(200, 200, 220)
-            cc.Parent = Lighting
-            table.insert(GraphicsEffects, cc)
-            Lighting.Brightness = 1
-            Lighting.Ambient = Color3.fromRGB(30, 30, 40)
+            cc.Name = "Gfx_CC"; cc.Brightness = -0.1; cc.Contrast = 0.3
+            cc.Saturation = 0.1; cc.TintColor = Color3.fromRGB(200, 200, 220)
+            cc.Parent = Lighting; table.insert(GraphicsEffects, cc)
+            Lighting.Brightness = 1; Lighting.Ambient = Color3.fromRGB(30, 30, 40)
             Lighting.OutdoorAmbient = Color3.fromRGB(60, 60, 70)
         end)
     elseif mode == "Neon" then
         pcall(function()
             local cc = Instance.new("ColorCorrectionEffect")
-            cc.Name = "Gfx_CC"
-            cc.Brightness = 0.1
-            cc.Contrast = 0.6
-            cc.Saturation = 1
-            cc.TintColor = Color3.fromRGB(200, 200, 255)
-            cc.Parent = Lighting
-            table.insert(GraphicsEffects, cc)
+            cc.Name = "Gfx_CC"; cc.Brightness = 0.1; cc.Contrast = 0.6
+            cc.Saturation = 1; cc.TintColor = Color3.fromRGB(200, 200, 255)
+            cc.Parent = Lighting; table.insert(GraphicsEffects, cc)
             local bloom = Instance.new("BloomEffect")
-            bloom.Name = "Gfx_Bloom"
-            bloom.Intensity = 3
-            bloom.Size = 40
-            bloom.Threshold = 0.6
-            bloom.Parent = Lighting
+            bloom.Name = "Gfx_Bloom"; bloom.Intensity = 3; bloom.Size = 40
+            bloom.Threshold = 0.6; bloom.Parent = Lighting
             table.insert(GraphicsEffects, bloom)
             Lighting.Brightness = 2
         end)
@@ -913,46 +877,24 @@ local function EnableRTX()
     ClearGraphics()
     pcall(function()
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level10
-        
         local cc = Instance.new("ColorCorrectionEffect")
-        cc.Name = "RTX_CC"
-        cc.Brightness = 0.03
-        cc.Contrast = 0.35
-        cc.Saturation = 0.45
-        cc.TintColor = Color3.fromRGB(240, 245, 255)
-        cc.Parent = Lighting
-        table.insert(RTXEffects, cc)
-        
+        cc.Name = "RTX_CC"; cc.Brightness = 0.03; cc.Contrast = 0.35
+        cc.Saturation = 0.45; cc.TintColor = Color3.fromRGB(240, 245, 255)
+        cc.Parent = Lighting; table.insert(RTXEffects, cc)
         local bloom = Instance.new("BloomEffect")
-        bloom.Name = "RTX_Bloom"
-        bloom.Intensity = 2.5
-        bloom.Size = 40
-        bloom.Threshold = 0.7
-        bloom.Parent = Lighting
+        bloom.Name = "RTX_Bloom"; bloom.Intensity = 2.5; bloom.Size = 40
+        bloom.Threshold = 0.7; bloom.Parent = Lighting
         table.insert(RTXEffects, bloom)
-        
         local sunRays = Instance.new("SunRaysEffect")
-        sunRays.Name = "RTX_SunRays"
-        sunRays.Intensity = 0.3
-        sunRays.Spread = 1.2
-        sunRays.Parent = Lighting
-        table.insert(RTXEffects, sunRays)
-        
+        sunRays.Name = "RTX_SunRays"; sunRays.Intensity = 0.3; sunRays.Spread = 1.2
+        sunRays.Parent = Lighting; table.insert(RTXEffects, sunRays)
         local dof = Instance.new("DepthOfFieldEffect")
-        dof.Name = "RTX_DOF"
-        dof.FarIntensity = 0.15
-        dof.FocusDistance = 25
-        dof.InFocusRadius = 35
-        dof.NearIntensity = 0.1
-        dof.Parent = Lighting
-        table.insert(RTXEffects, dof)
-        
+        dof.Name = "RTX_DOF"; dof.FarIntensity = 0.15; dof.FocusDistance = 25
+        dof.InFocusRadius = 35; dof.NearIntensity = 0.1
+        dof.Parent = Lighting; table.insert(RTXEffects, dof)
         local blur = Instance.new("BlurEffect")
-        blur.Name = "RTX_Blur"
-        blur.Size = 2
-        blur.Parent = Lighting
-        table.insert(RTXEffects, blur)
-        
+        blur.Name = "RTX_Blur"; blur.Size = 2
+        blur.Parent = Lighting; table.insert(RTXEffects, blur)
         Lighting.GlobalShadows = true
         Lighting.FogEnd = 9e9
         Lighting.Brightness = 3
@@ -974,7 +916,8 @@ local function DisableRTX()
 end
 
 -- ==========================================
--- ระบบท้องฟ้า (Sky) — เลือกได้ทีละอัน แสดงเฉพาะที่เลือก
+-- ระบบท้องฟ้า (Sky) — ใช้งานได้จริง
+-- ใช้ Sky object เดียวสลับ texture ID
 -- ==========================================
 local SkyPresets = {
     Sunset = {
@@ -1015,29 +958,43 @@ local SkyPresets = {
     }
 }
 
--- ลบ Sky ที่สคริปต์สร้างไว้ทั้งหมด (ของเก่า + ของใหม่)
-local function ClearAllCustomSkies()
-    pcall(function()
-        for _, v in pairs(Lighting:GetChildren()) do
-            if v:IsA("Sky") and (v.Name == "Custom_Sky" or v.Name:match("^SombraSky_")) then
-                v:Destroy()
-            end
-        end
-    end)
+-- เก็บ Sky เริ่มต้นของแมพไว้ (ถ้ามี) เพื่อคืนค่าได้ถูกต้อง
+local originalSky = nil
+for _, v in pairs(Lighting:GetChildren()) do
+    if v:IsA("Sky") then
+        originalSky = v
+        break
+    end
 end
 
--- แสดงเฉพาะ Sky ที่เลือก (ลบของเก่าออกก่อนทุกครั้ง)
+-- Sky ของสคริปต์: สร้างครั้งเดียว ใช้ซ้ำตลอด
+local customSky = Lighting:FindFirstChild("SombraSky")
+local function EnsureCustomSky()
+    if not customSky or not customSky.Parent then
+        customSky = Instance.new("Sky")
+        customSky.Name = "SombraSky"
+        customSky.Parent = Lighting
+    end
+    return customSky
+end
+
+local function DestroyCustomSky()
+    local existing = Lighting:FindFirstChild("SombraSky")
+    if existing then existing:Destroy() end
+    customSky = nil
+end
+
+-- ใช้ Sky ที่เลือก — เขียนทับ texture บน Sky เดียว
 local function ApplySky(skyName)
-    ClearAllCustomSkies()
     if skyName == "None" or not SkyPresets[skyName] then
+        DestroyCustomSky()
         Config.SkySelection = "None"
-        SendNotification("Sky", "ไม่ได้เลือกท้องฟ้า", 2)
+        SendNotification("Sky", "ปิดท้องฟ้า (ค่าเริ่มต้น)", 2)
         return
     end
     local preset = SkyPresets[skyName]
+    local sky = EnsureCustomSky()
     pcall(function()
-        local sky = Instance.new("Sky")
-        sky.Name = "SombraSky_" .. skyName
         sky.SkyboxBk = preset.Bk
         sky.SkyboxDn = preset.Dn
         sky.SkyboxFt = preset.Ft
@@ -1047,14 +1004,13 @@ local function ApplySky(skyName)
         sky.StarCount = preset.StarCount
         sky.SunAngularSize = 21
         sky.MoonAngularSize = 11
-        sky.Parent = Lighting
     end)
     Config.SkySelection = skyName
     SendNotification("Sky", "เลือก: " .. skyName, 2)
 end
 
 local function ResetSky()
-    ClearAllCustomSkies()
+    DestroyCustomSky()
     Config.SkySelection = "None"
     SendNotification("Sky", "รีเซ็ตเป็นค่าเริ่มต้น", 2)
 end
@@ -1088,7 +1044,7 @@ end
 -- ==========================================
 -- เมนู: หน้าหลัก
 -- ==========================================
-CreateSidebarButton("🏠 หน้าหลัก", 1, function()
+CreateSidebarButton("🏠 หลัก", 1, function()
     local page = CreatePage("หน้าหลัก")
     CreateToggle(page, "🎯 ล็อกเป้าหมาย", "AimbotEnabled", false, function(state)
         if FOVCircle then FOVCircle.Visible = state end
@@ -1098,24 +1054,24 @@ CreateSidebarButton("🏠 หน้าหลัก", 1, function()
         end
     end)
     local aimModeBtn = Instance.new("TextButton")
-    aimModeBtn.Size = UDim2.new(1, 0, 0, 35)
+    aimModeBtn.Size = UDim2.new(1, 0, 0, isSmallScreen and 28 or 32)
     aimModeBtn.BackgroundColor3 = Config.ThemeColor
-    aimModeBtn.Text = "🎯 โหมดล็อก: " .. (Config.AimPart == "Head" and "หัว" or "ตัว")
+    aimModeBtn.Text = "🎯 โหมด: " .. (Config.AimPart == "Head" and "หัว" or "ตัว")
     aimModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    aimModeBtn.TextSize = 14
+    aimModeBtn.TextSize = isSmallScreen and 10 or 12
     aimModeBtn.Font = Enum.Font.GothamBold
     aimModeBtn.ZIndex = 6
     aimModeBtn.Parent = page
-    Instance.new("UICorner", aimModeBtn).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", aimModeBtn).CornerRadius = UDim.new(0, 6)
     aimModeBtn.MouseButton1Click:Connect(function()
         Config.AimPart = (Config.AimPart == "Head") and "HumanoidRootPart" or "Head"
-        aimModeBtn.Text = "🎯 โหมดล็อก: " .. (Config.AimPart == "Head" and "หัว" or "ตัว")
+        aimModeBtn.Text = "🎯 โหมด: " .. (Config.AimPart == "Head" and "หัว" or "ตัว")
     end)
-    CreateSlider(page, "📡 ขนาด FOV", 50, 500, "FOVCircleRadius", 250, function(value)
+    CreateSlider(page, "📡 FOV", 50, 500, "FOVCircleRadius", 250, function(value)
         if FOVCircle then FOVCircle.Radius = value end
     end)
-    CreateSlider(page, "🔒 ความแรงล็อก", 0, 100, "LockStrength", 90, function(value) Config.LockStrength = value end)
-    CreateToggle(page, "🧱 ไม่ล็อกผ่านกำแพง", "WallCheck", true, function(state) end)
+    CreateSlider(page, "🔒 ความแรง", 0, 100, "LockStrength", 90, function(value) Config.LockStrength = value end)
+    CreateToggle(page, "🧱 ไม่ผ่านกำแพง", "WallCheck", true, function(state) end)
     CreateToggle(page, "🚀 Silent Aim", "BulletHomingEnabled", false, function(state)
         if FOVCircle then FOVCircle.Visible = state end
     end)
@@ -1127,24 +1083,25 @@ end)
 CreateSidebarButton("👥 ผู้เล่น", 2, function()
     local page = CreatePage("รายชื่อผู้เล่น")
     local refreshBtn = Instance.new("TextButton")
-    refreshBtn.Size = UDim2.new(1, 0, 0, 35)
+    refreshBtn.Size = UDim2.new(1, 0, 0, isSmallScreen and 28 or 32)
     refreshBtn.BackgroundColor3 = Config.ThemeColor
     refreshBtn.Text = "🔄 รีเฟรช"
     refreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     refreshBtn.Font = Enum.Font.GothamBold
+    refreshBtn.TextSize = isSmallScreen and 10 or 12
     refreshBtn.ZIndex = 6
     refreshBtn.Parent = page
-    Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 6)
 
     local playerListFrame = Instance.new("Frame")
-    playerListFrame.Size = UDim2.new(1, 0, 0, 350)
+    playerListFrame.Size = UDim2.new(1, 0, 0, isSmallScreen and 220 or 300)
     playerListFrame.BackgroundColor3 = Config.BgColor
     playerListFrame.BackgroundTransparency = 0.7
     playerListFrame.ZIndex = 3
     playerListFrame.Parent = page
-    Instance.new("UICorner", playerListFrame).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", playerListFrame).CornerRadius = UDim.new(0, 6)
     local listLayout = Instance.new("UIListLayout")
-    listLayout.Padding = UDim.new(0, 5)
+    listLayout.Padding = UDim.new(0, 3)
     listLayout.Parent = playerListFrame
 
     local function Refresh()
@@ -1154,32 +1111,35 @@ CreateSidebarButton("👥 ผู้เล่น", 2, function()
         for _, player in pairs(Players:GetPlayers()) do
             if player ~= LocalPlayer then
                 local row = Instance.new("Frame")
-                row.Size = UDim2.new(1, -10, 0, 40)
-                row.Position = UDim2.new(0, 5, 0, 0)
+                row.Size = UDim2.new(1, -6, 0, isSmallScreen and 28 or 32)
+                row.Position = UDim2.new(0, 3, 0, 0)
                 row.BackgroundColor3 = Color3.fromRGB(40, 35, 60)
                 row.ZIndex = 4
                 row.Parent = playerListFrame
-                Instance.new("UICorner", row).CornerRadius = UDim.new(0, 6)
+                Instance.new("UICorner", row).CornerRadius = UDim.new(0, 4)
                 local nameLabel = Instance.new("TextLabel")
-                nameLabel.Size = UDim2.new(0.5, 0, 1, 0)
-                nameLabel.Position = UDim2.new(0, 5, 0, 0)
+                nameLabel.Size = UDim2.new(0.55, 0, 1, 0)
+                nameLabel.Position = UDim2.new(0, 4, 0, 0)
                 nameLabel.BackgroundTransparency = 1
                 nameLabel.Text = player.Name
                 nameLabel.TextColor3 = Config.TextColor
+                nameLabel.TextSize = isSmallScreen and 9 or 11
                 nameLabel.Font = Enum.Font.Gotham
                 nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+                nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
                 nameLabel.ZIndex = 5
                 nameLabel.Parent = row
                 local tpBtn = Instance.new("TextButton")
-                tpBtn.Size = UDim2.new(0, 50, 0, 28)
-                tpBtn.Position = UDim2.new(0.55, 0, 0.5, -14)
+                tpBtn.Size = UDim2.new(0, isSmallScreen and 32 or 38, 0, isSmallScreen and 22 or 24)
+                tpBtn.Position = UDim2.new(0.57, 0, 0.5, -(isSmallScreen and 11 or 12))
                 tpBtn.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
                 tpBtn.Text = "วาป"
                 tpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                tpBtn.TextSize = isSmallScreen and 9 or 10
                 tpBtn.Font = Enum.Font.GothamBold
                 tpBtn.ZIndex = 5
                 tpBtn.Parent = row
-                Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 4)
+                Instance.new("UICorner", tpBtn).CornerRadius = UDim.new(0, 3)
                 tpBtn.MouseButton1Click:Connect(function()
                     local char = LocalPlayer.Character
                     if char and char:FindFirstChild("HumanoidRootPart") and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
@@ -1187,15 +1147,16 @@ CreateSidebarButton("👥 ผู้เล่น", 2, function()
                     end
                 end)
                 local resetBtn = Instance.new("TextButton")
-                resetBtn.Size = UDim2.new(0, 50, 0, 28)
-                resetBtn.Position = UDim2.new(0.75, 0, 0.5, -14)
+                resetBtn.Size = UDim2.new(0, isSmallScreen and 32 or 38, 0, isSmallScreen and 22 or 24)
+                resetBtn.Position = UDim2.new(0.77, 0, 0.5, -(isSmallScreen and 11 or 12))
                 resetBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
                 resetBtn.Text = "รี"
                 resetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+                resetBtn.TextSize = isSmallScreen and 9 or 10
                 resetBtn.Font = Enum.Font.GothamBold
                 resetBtn.ZIndex = 5
                 resetBtn.Parent = row
-                Instance.new("UICorner", resetBtn).CornerRadius = UDim.new(0, 4)
+                Instance.new("UICorner", resetBtn).CornerRadius = UDim.new(0, 3)
                 resetBtn.MouseButton1Click:Connect(function()
                     if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
                         player.Character:FindFirstChildOfClass("Humanoid").Health = 0
@@ -1214,7 +1175,7 @@ end)
 -- ==========================================
 -- เมนู: ผู้เล่น/บิน
 -- ==========================================
-CreateSidebarButton("👤 ผู้เล่น/บิน", 3, function()
+CreateSidebarButton("👤 บิน", 3, function()
     local page = CreatePage("ผู้เล่น & การเคลื่อนที่")
     CreateTextBox(page, "⚡ Speed (0-1000)", "SpeedValue", 500, 1000, function(value)
         if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
@@ -1254,34 +1215,36 @@ end)
 -- ==========================================
 -- เมนู: เส้นมอง
 -- ==========================================
-CreateSidebarButton("👁️ เส้นมอง", 4, function()
+CreateSidebarButton("👁️ ESP", 4, function()
     local page = CreatePage("เส้นมอง (ESP)")
     CreateToggle(page, "เปิด/ปิด เส้นมอง", "ESP_Enabled", false, function(state) end)
     CreateToggle(page, "เปิด/ปิด กล่อง", "ESP_Box", false, function(state) end)
     CreateToggle(page, "เปิด/ปิด หลอดเลือด", "ESP_Health", false, function(state) end)
     local modeBtn = Instance.new("TextButton")
-    modeBtn.Size = UDim2.new(1, 0, 0, 35)
+    modeBtn.Size = UDim2.new(1, 0, 0, isSmallScreen and 28 or 32)
     modeBtn.BackgroundColor3 = Config.BgColor
     modeBtn.BackgroundTransparency = 0.5
-    modeBtn.Text = "📍 ตำแหน่งเส้น: " .. (Config.ESP_LineMode == "Top" and "ด้านบน" or "ด้านล่าง")
+    modeBtn.Text = "📍 ตำแหน่ง: " .. (Config.ESP_LineMode == "Top" and "บน" or "ล่าง")
     modeBtn.TextColor3 = Config.TextColor
+    modeBtn.TextSize = isSmallScreen and 10 or 12
     modeBtn.Font = Enum.Font.Gotham
     modeBtn.ZIndex = 6
     modeBtn.Parent = page
-    Instance.new("UICorner", modeBtn).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", modeBtn).CornerRadius = UDim.new(0, 6)
     modeBtn.MouseButton1Click:Connect(function()
         Config.ESP_LineMode = (Config.ESP_LineMode == "Top") and "Bottom" or "Top"
-        modeBtn.Text = "📍 ตำแหน่งเส้น: " .. (Config.ESP_LineMode == "Top" and "ด้านบน" or "ด้านล่าง")
+        modeBtn.Text = "📍 ตำแหน่ง: " .. (Config.ESP_LineMode == "Top" and "บน" or "ล่าง")
     end)
     local colorBtn = Instance.new("TextButton")
-    colorBtn.Size = UDim2.new(1, 0, 0, 35)
+    colorBtn.Size = UDim2.new(1, 0, 0, isSmallScreen and 28 or 32)
     colorBtn.BackgroundColor3 = Config.ESP_LineColor
-    colorBtn.Text = "🎨 เปลี่ยนสีเส้น ESP"
+    colorBtn.Text = "🎨 เปลี่ยนสีเส้น"
     colorBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+    colorBtn.TextSize = isSmallScreen and 10 or 12
     colorBtn.Font = Enum.Font.Gotham
     colorBtn.ZIndex = 6
     colorBtn.Parent = page
-    Instance.new("UICorner", colorBtn).CornerRadius = UDim.new(0, 8)
+    Instance.new("UICorner", colorBtn).CornerRadius = UDim.new(0, 6)
     colorBtn.MouseButton1Click:Connect(function()
         local colors = {
             Color3.fromRGB(255, 0, 0), Color3.fromRGB(0, 255, 0), Color3.fromRGB(0, 0, 255),
@@ -1296,28 +1259,27 @@ CreateSidebarButton("👁️ เส้นมอง", 4, function()
 end)
 
 -- ==========================================
--- เมนู: ตั้งค่า (Graphics + RTX + Sky แบบเลือกได้)
+-- เมนู: ตั้งค่า (Graphics + RTX + Sky)
 -- ==========================================
 CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
     local page = CreatePage("ตั้งค่า")
 
-    -- ============ ภาพสวย (Graphics) ============
     local gfxLabel = Instance.new("TextLabel")
-    gfxLabel.Size = UDim2.new(1, 0, 0, 25)
+    gfxLabel.Size = UDim2.new(1, 0, 0, isSmallScreen and 20 or 24)
     gfxLabel.BackgroundTransparency = 1
-    gfxLabel.Text = "🎨 ภาพสวย (Graphics)"
+    gfxLabel.Text = "🎨 Graphics"
     gfxLabel.TextColor3 = Config.TextColor
-    gfxLabel.TextSize = 15
+    gfxLabel.TextSize = isSmallScreen and 12 or 14
     gfxLabel.Font = Enum.Font.GothamBold
     gfxLabel.TextXAlignment = Enum.TextXAlignment.Left
     gfxLabel.ZIndex = 3
     gfxLabel.Parent = page
 
-    CreateButton(page, "🎨 Cartoon (การ์ตูน)", function() EnableGraphics("Cartoon") end)
-    CreateButton(page, "📷 Realistic (สมจริง)", function() EnableGraphics("Realistic") end)
-    CreateButton(page, "🌸 Anime (อนิเมะ)", function() EnableGraphics("Anime") end)
-    CreateButton(page, "🌑 Dark (มืด)", function() EnableGraphics("Dark") end)
-    CreateButton(page, "💡 Neon (นีออน)", function() EnableGraphics("Neon") end)
+    CreateButton(page, "🎨 Cartoon", function() EnableGraphics("Cartoon") end)
+    CreateButton(page, "📷 Realistic", function() EnableGraphics("Realistic") end)
+    CreateButton(page, "🌸 Anime", function() EnableGraphics("Anime") end)
+    CreateButton(page, "🌑 Dark", function() EnableGraphics("Dark") end)
+    CreateButton(page, "💡 Neon", function() EnableGraphics("Neon") end)
     CreateButton(page, "🔄 รีเซ็ตภาพ", function()
         ClearGraphics()
         pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic end)
@@ -1328,13 +1290,12 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
         SendNotification("Graphics", "รีเซ็ตแล้ว", 2)
     end)
 
-    -- ============ RTX ============
     local rtxLabel = Instance.new("TextLabel")
-    rtxLabel.Size = UDim2.new(1, 0, 0, 25)
+    rtxLabel.Size = UDim2.new(1, 0, 0, isSmallScreen and 20 or 24)
     rtxLabel.BackgroundTransparency = 1
-    rtxLabel.Text = "🎬 RTX (Real Ray Tracing)"
+    rtxLabel.Text = "🎬 RTX"
     rtxLabel.TextColor3 = Config.TextColor
-    rtxLabel.TextSize = 15
+    rtxLabel.TextSize = isSmallScreen and 12 or 14
     rtxLabel.Font = Enum.Font.GothamBold
     rtxLabel.TextXAlignment = Enum.TextXAlignment.Left
     rtxLabel.ZIndex = 3
@@ -1343,28 +1304,27 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
     CreateButton(page, "🎬 เปิด RTX", function() EnableRTX() end)
     CreateButton(page, "❌ ปิด RTX", function() DisableRTX() end)
 
-    -- ============ ท้องฟ้า (Sky) ============
+    -- ===== ท้องฟ้า =====
     local skyLabel = Instance.new("TextLabel")
-    skyLabel.Size = UDim2.new(1, 0, 0, 25)
+    skyLabel.Size = UDim2.new(1, 0, 0, isSmallScreen and 20 or 24)
     skyLabel.BackgroundTransparency = 1
-    skyLabel.Text = "🌌 ท้องฟ้า (Sky) — เลือกได้ทีละอัน"
+    skyLabel.Text = "🌌 ท้องฟ้า (เลือกได้ทีละอัน)"
     skyLabel.TextColor3 = Config.TextColor
-    skyLabel.TextSize = 15
+    skyLabel.TextSize = isSmallScreen and 12 or 14
     skyLabel.Font = Enum.Font.GothamBold
     skyLabel.TextXAlignment = Enum.TextXAlignment.Left
     skyLabel.ZIndex = 3
     skyLabel.Parent = page
 
-    -- สร้างปุ่มท้องฟ้าแบบเลือกได้ (radio-style)
     local skyButtons = {}
     local skyNames = {"Sunset", "Space", "Night", "Cloudy", "Sunny", "Pink"}
     local skyLabels = {
-        Sunset = "🌅 Sunset (พระอาทิตย์ตก)",
-        Space  = "🌌 Space (อวกาศ)",
-        Night  = "🌙 Night (กลางคืน)",
-        Cloudy = "☁️ Cloudy (เมฆ)",
-        Sunny  = "☀️ Sunny (แดดจ้า)",
-        Pink   = "🌸 Pink (ชมพู)"
+        Sunset = "🌅 Sunset",
+        Space  = "🌌 Space",
+        Night  = "🌙 Night",
+        Cloudy = "☁️ Cloudy",
+        Sunny  = "☀️ Sunny",
+        Pink   = "🌸 Pink"
     }
 
     local function RefreshSkyButtons()
@@ -1381,20 +1341,19 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
 
     for _, skyName in ipairs(skyNames) do
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, 0, 0, 35)
+        btn.Size = UDim2.new(1, 0, 0, isSmallScreen and 26 or 30)
         btn.BackgroundColor3 = Color3.fromRGB(40, 35, 60)
         btn.Text = skyLabels[skyName]
         btn.TextColor3 = Config.TextDim
-        btn.TextSize = 14
+        btn.TextSize = isSmallScreen and 10 or 12
         btn.Font = Enum.Font.GothamBold
         btn.ZIndex = 6
         btn.Active = true
         btn.AutoButtonColor = false
         btn.Parent = page
-        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 8)
+        Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
         skyButtons[skyName] = btn
         btn.MouseButton1Click:Connect(function()
-            -- ถ้ากดซ้ำอันเดิม => ยกเลิก (ซ่อน)
             if Config.SkySelection == skyName then
                 ApplySky("None")
             else
@@ -1409,13 +1368,12 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
         RefreshSkyButtons()
     end)
 
-    -- ============ อื่นๆ ============
     local otherLabel = Instance.new("TextLabel")
-    otherLabel.Size = UDim2.new(1, 0, 0, 25)
+    otherLabel.Size = UDim2.new(1, 0, 0, isSmallScreen and 20 or 24)
     otherLabel.BackgroundTransparency = 1
-    otherLabel.Text = "⚙️ ระบบอื่นๆ"
+    otherLabel.Text = "⚙️ อื่นๆ"
     otherLabel.TextColor3 = Config.TextColor
-    otherLabel.TextSize = 15
+    otherLabel.TextSize = isSmallScreen and 12 or 14
     otherLabel.Font = Enum.Font.GothamBold
     otherLabel.TextXAlignment = Enum.TextXAlignment.Left
     otherLabel.ZIndex = 3
@@ -1436,7 +1394,7 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
         for _, data in pairs(espDrawings) do
             for _, obj in pairs(data) do pcall(function() obj:Remove() end) end
         end
-        ClearAllCustomSkies()
+        DestroyCustomSky()
         ScreenGui:Destroy()
     end)
 
@@ -1538,7 +1496,7 @@ RunService.RenderStepped:Connect(function()
                             data.Line.Thickness = Config.LineThickness
                             data.Line.Visible = true
                             data.Text.Text = player.Name
-                            data.Text.Position = Vector2.new(screenPoint.X, screenPoint.Y - 25)
+                            data.Text.Position = Vector2.new(screenPoint.X, screenPoint.Y - 22)
                             data.Text.Visible = true
                         else
                             data.Line.Visible = false
@@ -1560,12 +1518,12 @@ RunService.RenderStepped:Connect(function()
                                 if Config.ESP_Health then
                                     local humanoid = char.Humanoid
                                     local healthPercent = math.clamp(humanoid.Health / humanoid.MaxHealth, 0, 1)
-                                    data.HealthBarBg.Size = Vector2.new(3.5, height)
-                                    data.HealthBarBg.Position = Vector2.new(boxPos.X - 6, boxPos.Y)
+                                    data.HealthBarBg.Size = Vector2.new(3, height)
+                                    data.HealthBarBg.Position = Vector2.new(boxPos.X - 5, boxPos.Y)
                                     data.HealthBarBg.Visible = true
                                     local currentBarHeight = height * healthPercent
-                                    data.HealthBar.Size = Vector2.new(2.5, currentBarHeight)
-                                    data.HealthBar.Position = Vector2.new(boxPos.X - 5.5, boxPos.Y + (height - currentBarHeight))
+                                    data.HealthBar.Size = Vector2.new(2, currentBarHeight)
+                                    data.HealthBar.Position = Vector2.new(boxPos.X - 4.5, boxPos.Y + (height - currentBarHeight))
                                     data.HealthBar.Color = Color3.fromRGB(255 * (1 - healthPercent), 255 * healthPercent, 0)
                                     data.HealthBar.Visible = true
                                 else
@@ -1597,13 +1555,13 @@ end)
 -- โหลดเสร็จ
 -- ==========================================
 task.spawn(function()
-    task.wait(0.5)
+    task.wait(0.4)
     if BarFill then
-        BarFill:TweenSize(UDim2.new(1, 0, 1, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 1, true)
+        BarFill:TweenSize(UDim2.new(1, 0, 1, 0), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.8, true)
     end
-    task.wait(1)
+    task.wait(0.8)
     if LoadingGui then LoadingGui:Destroy() end
     if ToggleButton then ToggleButton.Visible = true end
     if MainFrame then MainFrame.Visible = true end
-    SendNotification("ยินดีต้อนรับ", "🐱 แมวส้ม Script Hub Slim พร้อมใช้!", 3)
+    SendNotification("ยินดีต้อนรับ", "🐱 แมวส้ม Hub Mobile พร้อมใช้!", 3)
 end)
