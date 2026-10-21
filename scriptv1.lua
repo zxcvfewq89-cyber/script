@@ -1,6 +1,6 @@
 -- ==========================================
--- 🐱 แมวส้ม Script Hub - Mobile Slim v2
--- (UI ย่อสำหรับมือถือ + Sky ใช้งานได้จริง)
+-- 🐱 แมวส้ม Script Hub - Compact Mobile v3
+-- (UI เล็กลง + UIScale + Sky ใช้งานได้จริง)
 -- ==========================================
 
 local Players = game:GetService("Players")
@@ -19,8 +19,9 @@ if LocalPlayer.PlayerGui:FindFirstChild("AnimeScriptHub") then
     LocalPlayer.PlayerGui.AnimeScriptHub:Destroy()
 end
 
-local isMobile = UserInputService.TouchEnabled and not UserInputService.MouseEnabled
-local isSmallScreen = (Camera.ViewportSize.X < 900) or isMobile
+-- ✅ ตรวจจอใหม่: จอสัมผัส หรือ กว้าง < 1100 = มือถือ
+local isMobile = UserInputService.TouchEnabled
+local isSmallScreen = isMobile or (Camera.ViewportSize.X < 1100) or (Camera.ViewportSize.Y < 700)
 
 -- ==========================================
 -- Config
@@ -76,7 +77,7 @@ pcall(function()
 end)
 
 -- ==========================================
--- SendNotification (ปรับขนาดตามจอ)
+-- SendNotification
 -- ==========================================
 local function SendNotification(title, content, duration)
     duration = duration or 3
@@ -85,8 +86,8 @@ local function SendNotification(title, content, duration)
         if not NotifContainer then
             NotifContainer = Instance.new("Frame")
             NotifContainer.Name = "NotifContainer"
-            NotifContainer.Size = UDim2.new(0, isSmallScreen and 200 or 260, 1, 0)
-            NotifContainer.Position = UDim2.new(1, isSmallScreen and -210 or -275, 0, 10)
+            NotifContainer.Size = UDim2.new(0, 200, 1, 0)
+            NotifContainer.Position = UDim2.new(1, -210, 0, 10)
             NotifContainer.BackgroundTransparency = 1
             NotifContainer.ZIndex = 200
             NotifContainer.Parent = ScreenGui
@@ -97,7 +98,7 @@ local function SendNotification(title, content, duration)
             layout.Parent = NotifContainer
         end
         local NotifBox = Instance.new("Frame")
-        NotifBox.Size = UDim2.new(1, 0, 0, isSmallScreen and 55 or 65)
+        NotifBox.Size = UDim2.new(1, 0, 0, 55)
         NotifBox.BackgroundColor3 = Config.BgColor
         NotifBox.BackgroundTransparency = 0.15
         NotifBox.Position = UDim2.new(1, 40, 0, 0)
@@ -115,7 +116,7 @@ local function SendNotification(title, content, duration)
         tLabel.BackgroundTransparency = 1
         tLabel.Text = title
         tLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-        tLabel.TextSize = 12
+        tLabel.TextSize = 11
         tLabel.Font = Enum.Font.GothamBold
         tLabel.TextXAlignment = Enum.TextXAlignment.Left
         tLabel.ZIndex = 200
@@ -126,7 +127,7 @@ local function SendNotification(title, content, duration)
         cLabel.BackgroundTransparency = 1
         cLabel.Text = content
         cLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-        cLabel.TextSize = 10
+        cLabel.TextSize = 9
         cLabel.Font = Enum.Font.Gotham
         cLabel.TextXAlignment = Enum.TextXAlignment.Left
         cLabel.TextWrapped = true
@@ -212,13 +213,13 @@ end
 -- FPS Counter
 -- ==========================================
 local FPSLabel = Instance.new("TextLabel")
-FPSLabel.Size = UDim2.new(0, isSmallScreen and 85 or 120, 0, isSmallScreen and 22 or 30)
-FPSLabel.Position = UDim2.new(1, isSmallScreen and -90 or -130, 0, 10)
+FPSLabel.Size = UDim2.new(0, 90, 0, 22)
+FPSLabel.Position = UDim2.new(1, -100, 0, 10)
 FPSLabel.BackgroundColor3 = Config.BgColor
 FPSLabel.BackgroundTransparency = 0.3
 FPSLabel.Text = "FPS: --"
 FPSLabel.TextColor3 = Config.FPSColor
-FPSLabel.TextSize = isSmallScreen and 11 or 14
+FPSLabel.TextSize = 11
 FPSLabel.Font = Enum.Font.GothamBold
 FPSLabel.Visible = false
 FPSLabel.ZIndex = 150
@@ -264,11 +265,11 @@ task.spawn(function()
 end)
 
 -- ==========================================
--- Loading Screen (เล็กกระทัดรัด)
+-- Loading Screen
 -- ==========================================
 local LoadingGui = Instance.new("Frame")
-LoadingGui.Size = UDim2.new(0, isSmallScreen and 240 or 340, 0, isSmallScreen and 120 or 170)
-LoadingGui.Position = UDim2.new(0.5, -(isSmallScreen and 120 or 170), 0.5, -(isSmallScreen and 60 or 85))
+LoadingGui.Size = UDim2.new(0, 240, 0, 120)
+LoadingGui.Position = UDim2.new(0.5, -120, 0.5, -60)
 LoadingGui.BackgroundColor3 = Config.BgColor
 LoadingGui.BackgroundTransparency = 0.15
 LoadingGui.ZIndex = 100
@@ -281,17 +282,17 @@ loadStroke.Transparency = 0.3
 loadStroke.Parent = LoadingGui
 local StatusText = Instance.new("TextLabel")
 StatusText.Size = UDim2.new(1, 0, 0, 20)
-StatusText.Position = UDim2.new(0, 0, 0, isSmallScreen and 50 or 75)
+StatusText.Position = UDim2.new(0, 0, 0, 50)
 StatusText.BackgroundTransparency = 1
 StatusText.Text = "กำลังโหลดระบบ..."
 StatusText.TextColor3 = Color3.fromRGB(255, 255, 255)
-StatusText.TextSize = isSmallScreen and 11 or 14
+StatusText.TextSize = 11
 StatusText.Font = Enum.Font.GothamBold
 StatusText.ZIndex = 101
 StatusText.Parent = LoadingGui
 local BarBg = Instance.new("Frame")
 BarBg.Size = UDim2.new(0.8, 0, 0, 10)
-BarBg.Position = UDim2.new(0.1, 0, 0, isSmallScreen and 85 or 120)
+BarBg.Position = UDim2.new(0.1, 0, 0, 85)
 BarBg.BackgroundColor3 = Color3.fromRGB(10, 10, 15)
 BarBg.BackgroundTransparency = 0.5
 BarBg.ZIndex = 101
@@ -305,12 +306,12 @@ BarFill.Parent = BarBg
 Instance.new("UICorner", BarFill).CornerRadius = UDim.new(1, 0)
 
 -- ==========================================
--- Main Frame (ขนาดขึ้นกับจอ)
+-- Main Frame (ขนาดกะทัดรัด)
 -- ==========================================
-local frameW = isSmallScreen and 330 or 560
-local frameH = isSmallScreen and 260 or 400
-local sidebarW = isSmallScreen and 88 or 130
-local headerH = isSmallScreen and 40 or 48
+local frameW = isSmallScreen and 330 or 480
+local frameH = isSmallScreen and 240 or 320
+local sidebarW = isSmallScreen and 82 or 110
+local headerH = isSmallScreen and 36 or 42
 
 local MainFrame = Instance.new("Frame")
 MainFrame.Size = UDim2.new(0, frameW, 0, frameH)
@@ -345,37 +346,37 @@ HeaderBar.ZIndex = 2
 HeaderBar.Parent = MainFrame
 Instance.new("UICorner", HeaderBar).CornerRadius = UDim.new(0, 12)
 local headerFix = Instance.new("Frame")
-headerFix.Size = UDim2.new(1, 0, 0, 12)
-headerFix.Position = UDim2.new(0, 0, 1, -12)
+headerFix.Size = UDim2.new(1, 0, 0, 10)
+headerFix.Position = UDim2.new(0, 0, 1, -10)
 headerFix.BackgroundColor3 = Config.BgColor
 headerFix.BackgroundTransparency = 0.35
 headerFix.ZIndex = 2
 headerFix.Parent = HeaderBar
 local HeaderIcon = Instance.new("ImageLabel")
-HeaderIcon.Size = UDim2.new(0, isSmallScreen and 24 or 30, 0, isSmallScreen and 24 or 30)
-HeaderIcon.Position = UDim2.new(0, isSmallScreen and 8 or 12, 0.5, -(isSmallScreen and 12 or 15))
+HeaderIcon.Size = UDim2.new(0, 22, 0, 22)
+HeaderIcon.Position = UDim2.new(0, 8, 0.5, -11)
 HeaderIcon.BackgroundTransparency = 1
 HeaderIcon.Image = "rbxassetid://103628356622817"
 HeaderIcon.ZIndex = 3
 HeaderIcon.Parent = HeaderBar
 local HeaderTitle = Instance.new("TextLabel")
 HeaderTitle.Size = UDim2.new(1, -80, 1, 0)
-HeaderTitle.Position = UDim2.new(0, isSmallScreen and 38 or 48, 0, 0)
+HeaderTitle.Position = UDim2.new(0, 36, 0, 0)
 HeaderTitle.BackgroundTransparency = 1
 HeaderTitle.Text = "🐱 แมวส้ม Hub"
 HeaderTitle.TextColor3 = Config.TextColor
-HeaderTitle.TextSize = isSmallScreen and 13 or 16
+HeaderTitle.TextSize = isSmallScreen and 12 or 14
 HeaderTitle.Font = Enum.Font.GothamBold
 HeaderTitle.TextXAlignment = Enum.TextXAlignment.Left
 HeaderTitle.ZIndex = 3
 HeaderTitle.Parent = HeaderBar
 local CloseBtn = Instance.new("TextButton")
-CloseBtn.Size = UDim2.new(0, isSmallScreen and 30 or 32, 0, isSmallScreen and 30 or 32)
-CloseBtn.Position = UDim2.new(1, -(isSmallScreen and 38 or 44), 0.5, -(isSmallScreen and 15 or 16))
+CloseBtn.Size = UDim2.new(0, isSmallScreen and 26 or 30, 0, isSmallScreen and 26 or 30)
+CloseBtn.Position = UDim2.new(1, -(isSmallScreen and 32 or 38), 0.5, -(isSmallScreen and 13 or 15))
 CloseBtn.BackgroundColor3 = Color3.fromRGB(255, 80, 80)
 CloseBtn.Text = "X"
 CloseBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-CloseBtn.TextSize = isSmallScreen and 14 or 16
+CloseBtn.TextSize = isSmallScreen and 12 or 14
 CloseBtn.Font = Enum.Font.GothamBold
 CloseBtn.ZIndex = 10
 CloseBtn.Active = true
@@ -384,7 +385,7 @@ CloseBtn.Parent = HeaderBar
 Instance.new("UICorner", CloseBtn).CornerRadius = UDim.new(0, 6)
 CloseBtn.MouseButton1Click:Connect(function() MainFrame.Visible = false end)
 
--- Drag (header)
+-- Drag
 local dragging = false
 local dragStart, startPos
 HeaderBar.InputBegan:Connect(function(input)
@@ -438,9 +439,9 @@ ContentContainer.BackgroundTransparency = 1
 ContentContainer.ZIndex = 2
 ContentContainer.Parent = MainFrame
 
--- Toggle Button (ลอย)
+-- Toggle Button
 local ToggleButton = Instance.new("ImageButton")
-ToggleButton.Size = UDim2.new(0, isSmallScreen and 44 or 54, 0, isSmallScreen and 44 or 54)
+ToggleButton.Size = UDim2.new(0, 42, 0, 42)
 ToggleButton.Position = UDim2.new(0, 10, 0.4, 0)
 ToggleButton.BackgroundColor3 = Config.BgColor
 ToggleButton.BackgroundTransparency = 0.2
@@ -482,12 +483,12 @@ end)
 -- ==========================================
 local function CreateSidebarButton(name, order, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, isSmallScreen and 34 or 38)
+    btn.Size = UDim2.new(1, 0, 0, 32)
     btn.BackgroundColor3 = Config.BgColor
     btn.BackgroundTransparency = 0.8
     btn.Text = "  " .. name
     btn.TextColor3 = Config.TextDim
-    btn.TextSize = isSmallScreen and 10 or 12
+    btn.TextSize = 10
     btn.Font = Enum.Font.Gotham
     btn.TextXAlignment = Enum.TextXAlignment.Left
     btn.LayoutOrder = order
@@ -523,7 +524,7 @@ end
 
 local function CreateToggle(parent, text, flagName, defaultState, callback)
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -12, 0, isSmallScreen and 32 or 36)
+    container.Size = UDim2.new(1, -12, 0, 30)
     container.BackgroundTransparency = 1
     container.ZIndex = 3
     container.Parent = parent
@@ -532,7 +533,7 @@ local function CreateToggle(parent, text, flagName, defaultState, callback)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = Config.TextColor
-    label.TextSize = isSmallScreen and 11 or 13
+    label.TextSize = 10
     label.Font = Enum.Font.Gotham
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 3
@@ -540,8 +541,8 @@ local function CreateToggle(parent, text, flagName, defaultState, callback)
     local currentState = Config[flagName]
     if currentState == nil then currentState = defaultState end
     local toggleBtn = Instance.new("TextButton")
-    toggleBtn.Size = UDim2.new(0, isSmallScreen and 36 or 42, 0, isSmallScreen and 20 or 22)
-    toggleBtn.Position = UDim2.new(1, -(isSmallScreen and 36 or 42), 0.5, -(isSmallScreen and 10 or 11))
+    toggleBtn.Size = UDim2.new(0, 34, 0, 18)
+    toggleBtn.Position = UDim2.new(1, -34, 0.5, -9)
     toggleBtn.BackgroundColor3 = currentState and Config.ThemeColor or Color3.fromRGB(60, 55, 80)
     toggleBtn.Text = ""
     toggleBtn.ZIndex = 6
@@ -550,8 +551,8 @@ local function CreateToggle(parent, text, flagName, defaultState, callback)
     toggleBtn.Parent = container
     Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
     local knob = Instance.new("Frame")
-    knob.Size = UDim2.new(0, isSmallScreen and 15 or 17, 0, isSmallScreen and 15 or 17)
-    knob.Position = currentState and UDim2.new(1, -(isSmallScreen and 17 or 19), 0.5, -(isSmallScreen and 7.5 or 8.5)) or UDim2.new(0, 2, 0.5, -(isSmallScreen and 7.5 or 8.5))
+    knob.Size = UDim2.new(0, 14, 0, 14)
+    knob.Position = currentState and UDim2.new(1, -16, 0.5, -7) or UDim2.new(0, 2, 0.5, -7)
     knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     knob.ZIndex = 7
     knob.Parent = toggleBtn
@@ -561,10 +562,10 @@ local function CreateToggle(parent, text, flagName, defaultState, callback)
         Config[flagName] = currentState
         if currentState then
             toggleBtn.BackgroundColor3 = Config.ThemeColor
-            TweenService:Create(knob, TweenInfo.new(0.15), {Position = UDim2.new(1, -(isSmallScreen and 17 or 19), 0.5, -(isSmallScreen and 7.5 or 8.5))}):Play()
+            TweenService:Create(knob, TweenInfo.new(0.15), {Position = UDim2.new(1, -16, 0.5, -7)}):Play()
         else
             toggleBtn.BackgroundColor3 = Color3.fromRGB(60, 55, 80)
-            TweenService:Create(knob, TweenInfo.new(0.15), {Position = UDim2.new(0, 2, 0.5, -(isSmallScreen and 7.5 or 8.5))}):Play()
+            TweenService:Create(knob, TweenInfo.new(0.15), {Position = UDim2.new(0, 2, 0.5, -7)}):Play()
         end
         if callback then callback(currentState) end
     end)
@@ -572,25 +573,25 @@ end
 
 local function CreateSlider(parent, text, min, max, flagName, default, callback)
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -12, 0, isSmallScreen and 42 or 46)
+    container.Size = UDim2.new(1, -12, 0, 38)
     container.BackgroundTransparency = 1
     container.ZIndex = 3
     container.Parent = parent
     local currentValue = Config[flagName]
     if currentValue == nil then currentValue = default end
     local label = Instance.new("TextLabel")
-    label.Size = UDim2.new(1, 0, 0, isSmallScreen and 16 or 18)
+    label.Size = UDim2.new(1, 0, 0, 16)
     label.BackgroundTransparency = 1
     label.Text = text .. ": " .. currentValue
     label.TextColor3 = Config.TextDim
-    label.TextSize = isSmallScreen and 10 or 12
+    label.TextSize = 10
     label.Font = Enum.Font.Gotham
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 3
     label.Parent = container
     local sliderBg = Instance.new("Frame")
-    sliderBg.Size = UDim2.new(1, 0, 0, isSmallScreen and 10 or 12)
-    sliderBg.Position = UDim2.new(0, 0, 0, isSmallScreen and 20 or 22)
+    sliderBg.Size = UDim2.new(1, 0, 0, 8)
+    sliderBg.Position = UDim2.new(0, 0, 0, 20)
     sliderBg.BackgroundColor3 = Color3.fromRGB(40, 35, 60)
     sliderBg.ZIndex = 3
     sliderBg.Parent = container
@@ -602,8 +603,8 @@ local function CreateSlider(parent, text, min, max, flagName, default, callback)
     fill.Parent = sliderBg
     Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
     local sliderBtn = Instance.new("TextButton")
-    sliderBtn.Size = UDim2.new(1, 0, 1.8, 0)
-    sliderBtn.Position = UDim2.new(0, 0, -0.4, 0)
+    sliderBtn.Size = UDim2.new(1, 0, 2, 0)
+    sliderBtn.Position = UDim2.new(0, 0, -0.5, 0)
     sliderBtn.BackgroundTransparency = 1
     sliderBtn.Text = ""
     sliderBtn.ZIndex = 5
@@ -630,7 +631,7 @@ end
 
 local function CreateTextBox(parent, text, flagName, default, maxVal, callback)
     local container = Instance.new("Frame")
-    container.Size = UDim2.new(1, -12, 0, isSmallScreen and 32 or 36)
+    container.Size = UDim2.new(1, -12, 0, 30)
     container.BackgroundTransparency = 1
     container.ZIndex = 3
     container.Parent = parent
@@ -639,7 +640,7 @@ local function CreateTextBox(parent, text, flagName, default, maxVal, callback)
     label.BackgroundTransparency = 1
     label.Text = text
     label.TextColor3 = Config.TextColor
-    label.TextSize = isSmallScreen and 11 or 13
+    label.TextSize = 10
     label.Font = Enum.Font.Gotham
     label.TextXAlignment = Enum.TextXAlignment.Left
     label.ZIndex = 3
@@ -653,7 +654,7 @@ local function CreateTextBox(parent, text, flagName, default, maxVal, callback)
     box.TextColor3 = Config.TextColor
     box.PlaceholderText = "0-" .. maxVal
     box.Font = Enum.Font.Gotham
-    box.TextSize = isSmallScreen and 11 or 13
+    box.TextSize = 10
     box.ZIndex = 6
     box.Parent = container
     Instance.new("UICorner", box).CornerRadius = UDim.new(0, 5)
@@ -672,11 +673,11 @@ end
 
 local function CreateButton(parent, text, callback)
     local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(1, 0, 0, isSmallScreen and 28 or 32)
+    btn.Size = UDim2.new(1, 0, 0, 26)
     btn.BackgroundColor3 = Config.ThemeColor
     btn.Text = text
     btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.TextSize = isSmallScreen and 10 or 12
+    btn.TextSize = 10
     btn.Font = Enum.Font.GothamBold
     btn.ZIndex = 6
     btn.Active = true
@@ -696,8 +697,8 @@ end
 local function CreatePage(title)
     ClearContent()
     local page = Instance.new("ScrollingFrame")
-    page.Size = UDim2.new(1, -12, 1, -12)
-    page.Position = UDim2.new(0, 6, 0, 6)
+    page.Size = UDim2.new(1, -10, 1, -10)
+    page.Position = UDim2.new(0, 5, 0, 5)
     page.BackgroundTransparency = 1
     page.ScrollBarThickness = 2
     page.ScrollBarImageColor3 = Config.ThemeColor
@@ -706,17 +707,17 @@ local function CreatePage(title)
     page.Parent = ContentContainer
     local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder
-    layout.Padding = UDim.new(0, isSmallScreen and 6 or 8)
+    layout.Padding = UDim.new(0, 5)
     layout.Parent = page
     layout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
-        page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 12)
+        page.CanvasSize = UDim2.new(0, 0, 0, layout.AbsoluteContentSize.Y + 10)
     end)
     local header = Instance.new("TextLabel")
-    header.Size = UDim2.new(1, 0, 0, isSmallScreen and 22 or 26)
+    header.Size = UDim2.new(1, 0, 0, 20)
     header.BackgroundTransparency = 1
     header.Text = title
     header.TextColor3 = Config.TextColor
-    header.TextSize = isSmallScreen and 13 or 16
+    header.TextSize = 12
     header.Font = Enum.Font.GothamBold
     header.TextXAlignment = Enum.TextXAlignment.Left
     header.LayoutOrder = 1
@@ -792,7 +793,7 @@ local function DisableAFK()
 end
 
 -- ==========================================
--- ระบบภาพสวย (Graphics)
+-- Graphics
 -- ==========================================
 local GraphicsEffects = {}
 local function ClearGraphics()
@@ -870,7 +871,7 @@ local function EnableGraphics(mode)
 end
 
 -- ==========================================
--- ระบบ RTX
+-- RTX
 -- ==========================================
 local RTXEffects = {}
 local function EnableRTX()
@@ -904,7 +905,7 @@ local function EnableRTX()
         Lighting.EnvironmentSpecularScale = 1
         Lighting.ShadowSoftness = 0.6
     end)
-    SendNotification("RTX", "เปิดแล้ว - ภาพสมจริง!", 3)
+    SendNotification("RTX", "เปิดแล้ว!", 3)
 end
 
 local function DisableRTX()
@@ -916,59 +917,18 @@ local function DisableRTX()
 end
 
 -- ==========================================
--- ระบบท้องฟ้า (Sky) — ใช้งานได้จริง
--- ใช้ Sky object เดียวสลับ texture ID
+-- Sky (ใช้ Sky object เดียว)
 -- ==========================================
 local SkyPresets = {
-    Sunset = {
-        Bk = "rbxassetid://5227623989", Dn = "rbxassetid://5227624056",
-        Ft = "rbxassetid://5227624232", Lf = "rbxassetid://5227624466",
-        Rt = "rbxassetid://5227624585", Up = "rbxassetid://5227624698",
-        StarCount = 3000
-    },
-    Space = {
-        Bk = "rbxassetid://159454299", Dn = "rbxassetid://159454296",
-        Ft = "rbxassetid://159454293", Lf = "rbxassetid://159454286",
-        Rt = "rbxassetid://159454300", Up = "rbxassetid://159454288",
-        StarCount = 5000
-    },
-    Night = {
-        Bk = "rbxassetid://126148478", Dn = "rbxassetid://126148536",
-        Ft = "rbxassetid://126148590", Lf = "rbxassetid://126148639",
-        Rt = "rbxassetid://126148690", Up = "rbxassetid://126148715",
-        StarCount = 4000
-    },
-    Cloudy = {
-        Bk = "rbxassetid://5705570226", Dn = "rbxassetid://5705570252",
-        Ft = "rbxassetid://5705570378", Lf = "rbxassetid://5705570330",
-        Rt = "rbxassetid://5705570438", Up = "rbxassetid://5705570482",
-        StarCount = 1000
-    },
-    Sunny = {
-        Bk = "rbxassetid://139511069", Dn = "rbxassetid://139511082",
-        Ft = "rbxassetid://139511093", Lf = "rbxassetid://139511104",
-        Rt = "rbxassetid://139511116", Up = "rbxassetid://139511127",
-        StarCount = 1000
-    },
-    Pink = {
-        Bk = "rbxassetid://4874245385", Dn = "rbxassetid://4874245558",
-        Ft = "rbxassetid://4874245832", Lf = "rbxassetid://4874246109",
-        Rt = "rbxassetid://4874246353", Up = "rbxassetid://4874246574",
-        StarCount = 3000
-    }
+    Sunset = {Bk="rbxassetid://5227623989", Dn="rbxassetid://5227624056", Ft="rbxassetid://5227624232", Lf="rbxassetid://5227624466", Rt="rbxassetid://5227624585", Up="rbxassetid://5227624698", StarCount=3000},
+    Space  = {Bk="rbxassetid://159454299", Dn="rbxassetid://159454296", Ft="rbxassetid://159454293", Lf="rbxassetid://159454286", Rt="rbxassetid://159454300", Up="rbxassetid://159454288", StarCount=5000},
+    Night  = {Bk="rbxassetid://126148478", Dn="rbxassetid://126148536", Ft="rbxassetid://126148590", Lf="rbxassetid://126148639", Rt="rbxassetid://126148690", Up="rbxassetid://126148715", StarCount=4000},
+    Cloudy = {Bk="rbxassetid://5705570226", Dn="rbxassetid://5705570252", Ft="rbxassetid://5705570378", Lf="rbxassetid://5705570330", Rt="rbxassetid://5705570438", Up="rbxassetid://5705570482", StarCount=1000},
+    Sunny  = {Bk="rbxassetid://139511069", Dn="rbxassetid://139511082", Ft="rbxassetid://139511093", Lf="rbxassetid://139511104", Rt="rbxassetid://139511116", Up="rbxassetid://139511127", StarCount=1000},
+    Pink   = {Bk="rbxassetid://4874245385", Dn="rbxassetid://4874245558", Ft="rbxassetid://4874245832", Lf="rbxassetid://4874246109", Rt="rbxassetid://4874246353", Up="rbxassetid://4874246574", StarCount=3000}
 }
 
--- เก็บ Sky เริ่มต้นของแมพไว้ (ถ้ามี) เพื่อคืนค่าได้ถูกต้อง
-local originalSky = nil
-for _, v in pairs(Lighting:GetChildren()) do
-    if v:IsA("Sky") then
-        originalSky = v
-        break
-    end
-end
-
--- Sky ของสคริปต์: สร้างครั้งเดียว ใช้ซ้ำตลอด
-local customSky = Lighting:FindFirstChild("SombraSky")
+local customSky = nil
 local function EnsureCustomSky()
     if not customSky or not customSky.Parent then
         customSky = Instance.new("Sky")
@@ -984,7 +944,6 @@ local function DestroyCustomSky()
     customSky = nil
 end
 
--- ใช้ Sky ที่เลือก — เขียนทับ texture บน Sky เดียว
 local function ApplySky(skyName)
     if skyName == "None" or not SkyPresets[skyName] then
         DestroyCustomSky()
@@ -1046,7 +1005,7 @@ end
 -- ==========================================
 CreateSidebarButton("🏠 หลัก", 1, function()
     local page = CreatePage("หน้าหลัก")
-    CreateToggle(page, "🎯 ล็อกเป้าหมาย", "AimbotEnabled", false, function(state)
+    CreateToggle(page, "🎯 ล็อกเป้า", "AimbotEnabled", false, function(state)
         if FOVCircle then FOVCircle.Visible = state end
         if not state then
             if TargetSnapLine then TargetSnapLine.Visible = false end
@@ -1054,11 +1013,11 @@ CreateSidebarButton("🏠 หลัก", 1, function()
         end
     end)
     local aimModeBtn = Instance.new("TextButton")
-    aimModeBtn.Size = UDim2.new(1, 0, 0, isSmallScreen and 28 or 32)
+    aimModeBtn.Size = UDim2.new(1, 0, 0, 26)
     aimModeBtn.BackgroundColor3 = Config.ThemeColor
     aimModeBtn.Text = "🎯 โหมด: " .. (Config.AimPart == "Head" and "หัว" or "ตัว")
     aimModeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    aimModeBtn.TextSize = isSmallScreen and 10 or 12
+    aimModeBtn.TextSize = 10
     aimModeBtn.Font = Enum.Font.GothamBold
     aimModeBtn.ZIndex = 6
     aimModeBtn.Parent = page
@@ -1083,18 +1042,18 @@ end)
 CreateSidebarButton("👥 ผู้เล่น", 2, function()
     local page = CreatePage("รายชื่อผู้เล่น")
     local refreshBtn = Instance.new("TextButton")
-    refreshBtn.Size = UDim2.new(1, 0, 0, isSmallScreen and 28 or 32)
+    refreshBtn.Size = UDim2.new(1, 0, 0, 26)
     refreshBtn.BackgroundColor3 = Config.ThemeColor
     refreshBtn.Text = "🔄 รีเฟรช"
     refreshBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
     refreshBtn.Font = Enum.Font.GothamBold
-    refreshBtn.TextSize = isSmallScreen and 10 or 12
+    refreshBtn.TextSize = 10
     refreshBtn.ZIndex = 6
     refreshBtn.Parent = page
     Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 6)
 
     local playerListFrame = Instance.new("Frame")
-    playerListFrame.Size = UDim2.new(1, 0, 0, isSmallScreen and 220 or 300)
+    playerListFrame.Size = UDim2.new(1, 0, 0, 200)
     playerListFrame.BackgroundColor3 = Config.BgColor
     playerListFrame.BackgroundTransparency = 0.7
     playerListFrame.ZIndex = 3
@@ -1111,31 +1070,31 @@ CreateSidebarButton("👥 ผู้เล่น", 2, function()
         for _, player in pairs(Players:GetPlayers()) do
             if player ~= LocalPlayer then
                 local row = Instance.new("Frame")
-                row.Size = UDim2.new(1, -6, 0, isSmallScreen and 28 or 32)
+                row.Size = UDim2.new(1, -6, 0, 26)
                 row.Position = UDim2.new(0, 3, 0, 0)
                 row.BackgroundColor3 = Color3.fromRGB(40, 35, 60)
                 row.ZIndex = 4
                 row.Parent = playerListFrame
                 Instance.new("UICorner", row).CornerRadius = UDim.new(0, 4)
                 local nameLabel = Instance.new("TextLabel")
-                nameLabel.Size = UDim2.new(0.55, 0, 1, 0)
+                nameLabel.Size = UDim2.new(0.5, 0, 1, 0)
                 nameLabel.Position = UDim2.new(0, 4, 0, 0)
                 nameLabel.BackgroundTransparency = 1
                 nameLabel.Text = player.Name
                 nameLabel.TextColor3 = Config.TextColor
-                nameLabel.TextSize = isSmallScreen and 9 or 11
+                nameLabel.TextSize = 9
                 nameLabel.Font = Enum.Font.Gotham
                 nameLabel.TextXAlignment = Enum.TextXAlignment.Left
                 nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
                 nameLabel.ZIndex = 5
                 nameLabel.Parent = row
                 local tpBtn = Instance.new("TextButton")
-                tpBtn.Size = UDim2.new(0, isSmallScreen and 32 or 38, 0, isSmallScreen and 22 or 24)
-                tpBtn.Position = UDim2.new(0.57, 0, 0.5, -(isSmallScreen and 11 or 12))
+                tpBtn.Size = UDim2.new(0, 32, 0, 20)
+                tpBtn.Position = UDim2.new(0.55, 0, 0.5, -10)
                 tpBtn.BackgroundColor3 = Color3.fromRGB(80, 120, 255)
                 tpBtn.Text = "วาป"
                 tpBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                tpBtn.TextSize = isSmallScreen and 9 or 10
+                tpBtn.TextSize = 8
                 tpBtn.Font = Enum.Font.GothamBold
                 tpBtn.ZIndex = 5
                 tpBtn.Parent = row
@@ -1147,12 +1106,12 @@ CreateSidebarButton("👥 ผู้เล่น", 2, function()
                     end
                 end)
                 local resetBtn = Instance.new("TextButton")
-                resetBtn.Size = UDim2.new(0, isSmallScreen and 32 or 38, 0, isSmallScreen and 22 or 24)
-                resetBtn.Position = UDim2.new(0.77, 0, 0.5, -(isSmallScreen and 11 or 12))
+                resetBtn.Size = UDim2.new(0, 32, 0, 20)
+                resetBtn.Position = UDim2.new(0.75, 0, 0.5, -10)
                 resetBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
                 resetBtn.Text = "รี"
                 resetBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-                resetBtn.TextSize = isSmallScreen and 9 or 10
+                resetBtn.TextSize = 8
                 resetBtn.Font = Enum.Font.GothamBold
                 resetBtn.ZIndex = 5
                 resetBtn.Parent = row
@@ -1173,7 +1132,7 @@ CreateSidebarButton("👥 ผู้เล่น", 2, function()
 end)
 
 -- ==========================================
--- เมนู: ผู้เล่น/บิน
+-- เมนู: บิน
 -- ==========================================
 CreateSidebarButton("👤 บิน", 3, function()
     local page = CreatePage("ผู้เล่น & การเคลื่อนที่")
@@ -1213,7 +1172,7 @@ CreateSidebarButton("👤 บิน", 3, function()
 end)
 
 -- ==========================================
--- เมนู: เส้นมอง
+-- เมนู: ESP
 -- ==========================================
 CreateSidebarButton("👁️ ESP", 4, function()
     local page = CreatePage("เส้นมอง (ESP)")
@@ -1221,12 +1180,12 @@ CreateSidebarButton("👁️ ESP", 4, function()
     CreateToggle(page, "เปิด/ปิด กล่อง", "ESP_Box", false, function(state) end)
     CreateToggle(page, "เปิด/ปิด หลอดเลือด", "ESP_Health", false, function(state) end)
     local modeBtn = Instance.new("TextButton")
-    modeBtn.Size = UDim2.new(1, 0, 0, isSmallScreen and 28 or 32)
+    modeBtn.Size = UDim2.new(1, 0, 0, 26)
     modeBtn.BackgroundColor3 = Config.BgColor
     modeBtn.BackgroundTransparency = 0.5
     modeBtn.Text = "📍 ตำแหน่ง: " .. (Config.ESP_LineMode == "Top" and "บน" or "ล่าง")
     modeBtn.TextColor3 = Config.TextColor
-    modeBtn.TextSize = isSmallScreen and 10 or 12
+    modeBtn.TextSize = 10
     modeBtn.Font = Enum.Font.Gotham
     modeBtn.ZIndex = 6
     modeBtn.Parent = page
@@ -1236,11 +1195,11 @@ CreateSidebarButton("👁️ ESP", 4, function()
         modeBtn.Text = "📍 ตำแหน่ง: " .. (Config.ESP_LineMode == "Top" and "บน" or "ล่าง")
     end)
     local colorBtn = Instance.new("TextButton")
-    colorBtn.Size = UDim2.new(1, 0, 0, isSmallScreen and 28 or 32)
+    colorBtn.Size = UDim2.new(1, 0, 0, 26)
     colorBtn.BackgroundColor3 = Config.ESP_LineColor
     colorBtn.Text = "🎨 เปลี่ยนสีเส้น"
     colorBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    colorBtn.TextSize = isSmallScreen and 10 or 12
+    colorBtn.TextSize = 10
     colorBtn.Font = Enum.Font.Gotham
     colorBtn.ZIndex = 6
     colorBtn.Parent = page
@@ -1259,17 +1218,17 @@ CreateSidebarButton("👁️ ESP", 4, function()
 end)
 
 -- ==========================================
--- เมนู: ตั้งค่า (Graphics + RTX + Sky)
+-- เมนู: ตั้งค่า
 -- ==========================================
 CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
     local page = CreatePage("ตั้งค่า")
 
     local gfxLabel = Instance.new("TextLabel")
-    gfxLabel.Size = UDim2.new(1, 0, 0, isSmallScreen and 20 or 24)
+    gfxLabel.Size = UDim2.new(1, 0, 0, 18)
     gfxLabel.BackgroundTransparency = 1
     gfxLabel.Text = "🎨 Graphics"
     gfxLabel.TextColor3 = Config.TextColor
-    gfxLabel.TextSize = isSmallScreen and 12 or 14
+    gfxLabel.TextSize = 11
     gfxLabel.Font = Enum.Font.GothamBold
     gfxLabel.TextXAlignment = Enum.TextXAlignment.Left
     gfxLabel.ZIndex = 3
@@ -1291,11 +1250,11 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
     end)
 
     local rtxLabel = Instance.new("TextLabel")
-    rtxLabel.Size = UDim2.new(1, 0, 0, isSmallScreen and 20 or 24)
+    rtxLabel.Size = UDim2.new(1, 0, 0, 18)
     rtxLabel.BackgroundTransparency = 1
     rtxLabel.Text = "🎬 RTX"
     rtxLabel.TextColor3 = Config.TextColor
-    rtxLabel.TextSize = isSmallScreen and 12 or 14
+    rtxLabel.TextSize = 11
     rtxLabel.Font = Enum.Font.GothamBold
     rtxLabel.TextXAlignment = Enum.TextXAlignment.Left
     rtxLabel.ZIndex = 3
@@ -1304,13 +1263,12 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
     CreateButton(page, "🎬 เปิด RTX", function() EnableRTX() end)
     CreateButton(page, "❌ ปิด RTX", function() DisableRTX() end)
 
-    -- ===== ท้องฟ้า =====
     local skyLabel = Instance.new("TextLabel")
-    skyLabel.Size = UDim2.new(1, 0, 0, isSmallScreen and 20 or 24)
+    skyLabel.Size = UDim2.new(1, 0, 0, 18)
     skyLabel.BackgroundTransparency = 1
-    skyLabel.Text = "🌌 ท้องฟ้า (เลือกได้ทีละอัน)"
+    skyLabel.Text = "🌌 ท้องฟ้า"
     skyLabel.TextColor3 = Config.TextColor
-    skyLabel.TextSize = isSmallScreen and 12 or 14
+    skyLabel.TextSize = 11
     skyLabel.Font = Enum.Font.GothamBold
     skyLabel.TextXAlignment = Enum.TextXAlignment.Left
     skyLabel.ZIndex = 3
@@ -1319,12 +1277,8 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
     local skyButtons = {}
     local skyNames = {"Sunset", "Space", "Night", "Cloudy", "Sunny", "Pink"}
     local skyLabels = {
-        Sunset = "🌅 Sunset",
-        Space  = "🌌 Space",
-        Night  = "🌙 Night",
-        Cloudy = "☁️ Cloudy",
-        Sunny  = "☀️ Sunny",
-        Pink   = "🌸 Pink"
+        Sunset = "🌅 Sunset", Space = "🌌 Space", Night = "🌙 Night",
+        Cloudy = "☁️ Cloudy", Sunny = "☀️ Sunny", Pink = "🌸 Pink"
     }
 
     local function RefreshSkyButtons()
@@ -1341,11 +1295,11 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
 
     for _, skyName in ipairs(skyNames) do
         local btn = Instance.new("TextButton")
-        btn.Size = UDim2.new(1, 0, 0, isSmallScreen and 26 or 30)
+        btn.Size = UDim2.new(1, 0, 0, 24)
         btn.BackgroundColor3 = Color3.fromRGB(40, 35, 60)
         btn.Text = skyLabels[skyName]
         btn.TextColor3 = Config.TextDim
-        btn.TextSize = isSmallScreen and 10 or 12
+        btn.TextSize = 10
         btn.Font = Enum.Font.GothamBold
         btn.ZIndex = 6
         btn.Active = true
@@ -1369,11 +1323,11 @@ CreateSidebarButton("⚙️ ตั้งค่า", 5, function()
     end)
 
     local otherLabel = Instance.new("TextLabel")
-    otherLabel.Size = UDim2.new(1, 0, 0, isSmallScreen and 20 or 24)
+    otherLabel.Size = UDim2.new(1, 0, 0, 18)
     otherLabel.BackgroundTransparency = 1
     otherLabel.Text = "⚙️ อื่นๆ"
     otherLabel.TextColor3 = Config.TextColor
-    otherLabel.TextSize = isSmallScreen and 12 or 14
+    otherLabel.TextSize = 11
     otherLabel.Font = Enum.Font.GothamBold
     otherLabel.TextXAlignment = Enum.TextXAlignment.Left
     otherLabel.ZIndex = 3
@@ -1563,5 +1517,5 @@ task.spawn(function()
     if LoadingGui then LoadingGui:Destroy() end
     if ToggleButton then ToggleButton.Visible = true end
     if MainFrame then MainFrame.Visible = true end
-    SendNotification("ยินดีต้อนรับ", "🐱 แมวส้ม Hub Mobile พร้อมใช้!", 3)
+    SendNotification("ยินดีต้อนรับ", "🐱 แมวส้ม Hub Compact!", 3)
 end)
