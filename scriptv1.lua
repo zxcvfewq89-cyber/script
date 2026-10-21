@@ -1,6 +1,6 @@
 -- ==========================================
--- 🐱 แมวส้ม Script Hub - Compact Mobile v4
--- (UI เล็กสำหรับมือถือ + ภาษาไทย + Sky ทำงานได้จริง)
+-- 🐱 แมวส้ม Script Hub - Compact Mobile v5
+-- (UI มือถือ + ภาษาไทย + Silent Aim + เดินเร็ว + หายตัว + บินนิ่ง)
 -- ==========================================
 
 local Players = game:GetService("Players")
@@ -32,8 +32,9 @@ local Config = {
     ESP_Enabled = false, ESP_Box = false, ESP_Health = false,
     ESP_LineColor = Color3.fromRGB(255, 0, 255), ESP_LineMode = "Bottom",
     LineThickness = 1.5,
-    SpeedEnabled = false, SpeedValue = 500, SpeedBypass = true,
+    SpeedEnabled = false, SpeedValue = 200, SpeedBypass = true,
     FlyEnabled = false, FlySpeed = 100,
+    InvisibleEnabled = false,
     AntiLagEnabled = false,
     AFKEnabled = false,
     FPSEnabled = false, FPSRGB = false, FPSColor = Color3.fromRGB(0, 255, 0),
@@ -46,6 +47,9 @@ local Config = {
 
 local currentLockedTarget = nil
 local espDrawings = {}
+local originalWalkSpeed = 16
+local originalJumpPower = 50
+local invisTransparencyStore = {}
 
 -- ==========================================
 -- ScreenGui
@@ -180,8 +184,8 @@ local function UnlockMovement()
     local hrp = char:FindFirstChild("HumanoidRootPart")
     if humanoid then
         humanoid.PlatformStand = false
-        humanoid.WalkSpeed = 16
-        humanoid.JumpPower = 50
+        humanoid.WalkSpeed = originalWalkSpeed
+        humanoid.JumpPower = originalJumpPower
         humanoid.AutoRotate = true
         humanoid.Sit = false
     end
@@ -192,6 +196,7 @@ local function UnlockMovement()
             end
         end
     end
+    Config.FlyEnabled = false
 end
 
 local function IsTargetInFOV()
@@ -206,6 +211,137 @@ local function IsTargetInFOV()
     if FOVCircle and distanceFromCenter > FOVCircle.Radius then return false end
     if not HasLineOfSight(targetPart) then return false end
     return true, targetPart
+end
+
+-- ==========================================
+-- ระบบบิน (แก้ให้เสถียร)
+-- ==========================================
+local flyConnection = nil
+local flyBodyVel = nil
+local flyBodyGyro = nil
+
+local function StopFly()
+    Config.FlyEnabled = false
+    if flyConnection then flyConnection:Disconnect(); flyConnection = nil end
+    local char = LocalPlayer.Character
+    if char then
+        local hrp = char:FindFirstChild("HumanoidRootPart")
+        local humanoid = char:FindFirstChildOfClass("Humanoid")
+        if hrp then
+            local bv = hrp:FindFirstChild("SombraFlyVel")
+            if bv then bv:Destroy() end
+            local bg = hrp:FindFirstChild("SombraFlyGyro")
+            if bg then bg:Destroy() end
+        end
+        if humanoid then
+            humanoid.PlatformStand = false
+            humanoid.WalkSpeed = Config.SpeedEnabled and Config.SpeedValue or originalWalkSpeed
+            humanoid.AutoRotate = true
+        end
+    end
+    flyBodyVel = nil
+    flyBodyGyro = nil
+end
+
+local function StartFly()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if not hrp or not humanoid then return end
+
+    -- ล้างของเก่าก่อน
+    StopFly()
+    Config.FlyEnabled = true
+    humanoid.PlatformStand = true
+
+    flyBodyVel = Instance.new("BodyVelocity")
+    flyBodyVel.Name = "SombraFlyVel"
+    flyBodyVel.Velocity = Vector3.zero
+    flyBodyVel.MaxForce = Vector3.new(9e9, 9e9, 9e9)
+    flyBodyVel.P = 1250
+    flyBodyVel.Parent = hrp
+
+    flyBodyGyro = Instance.new("BodyGyro")
+    flyBodyGyro.Name = "SombraFlyGyro"
+    flyBodyGyro.P = 9e4
+    flyBodyGyro.D = 500
+    flyBodyGyro.MaxTorque = Vector3.new(9e9, 9e9, 9e9)
+    flyBodyGyro.CFrame = hrp.CFrame
+    flyBodyGyro.Parent = hrp
+
+    flyConnection = RunService.RenderStepped:Connect(function()
+        if not Config.FlyEnabled then
+            StopFly()
+            return
+        end
+        local c = LocalPlayer.Character
+        local h = c and c:FindFirstChild("HumanoidRootPart")
+        if not h or not flyBodyVel or not flyBodyGyro or not flyBodyVel.Parent or not flyBodyGyro.Parent then
+            StopFly()
+            return
+        end
+
+        local moveDir = Vector3.zero
+        local camCF = Camera.CFrame
+        -- รับ input เดิน (WASD/อนาล็อก)
+        local humanoidMove = (c:FindFirstChildOfClass("Humanoid") and c:FindFirstChildOfClass("Humanoid").MoveDirection) or Vector3.zero
+        if humanoidMove.Magnitude > 0.01 then
+            moveDir = camCF.LookVector * humanoidMove.Z + camCF.RightVector * humanoidMove.X
+        end
+        -- ปุ่มกระโดด = ขึ้น, กด Shift/นั่ง = ลง (หรือใช้ค่าความสูง)
+        if UserInputService:IsKeyDown(Enum.KeyCode.Space) or (humanoid and humanoid.Jump) then
+            moveDir = moveDir + Vector3.new(0, 1, 0)
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+            moveDir = moveDir - Vector3.new(0, 1, 0)
+        end
+        if moveDir.Magnitude > 0 then
+            flyBodyVel.Velocity = moveDir.Unit * Config.FlySpeed
+        else
+            flyBodyVel.Velocity = Vector3.zero
+        end
+        flyBodyGyro.CFrame = camCF
+    end)
+end
+
+-- ==========================================
+-- ระบบหายตัว
+-- ==========================================
+local function ApplyInvisible()
+    local char = LocalPlayer.Character
+    if not char then return end
+    invisTransparencyStore = {}
+    for _, v in pairs(char:GetDescendants()) do
+        if v:IsA("BasePart") and v.Name ~= "HumanoidRootPart" then
+            invisTransparencyStore[v] = v.Transparency
+            v.Transparency = 1
+            v.CanCollide = false
+        elseif v:IsA("Decal") or v:IsA("Texture") then
+            invisTransparencyStore[v] = v.Transparency
+            v.Transparency = 1
+        end
+    end
+    -- ซ่อน Accessory
+    for _, v in pairs(char:GetChildren()) do
+        if v:IsA("Accessory") then
+            invisTransparencyStore[v] = true
+            v:Destroy()
+        end
+    end
+end
+
+local function RemoveInvisible()
+    local char = LocalPlayer.Character
+    if not char then return end
+    for v, orig in pairs(invisTransparencyStore) do
+        if typeof(v) == "Instance" and v.Parent then
+            if typeof(orig) == "number" then
+                pcall(function() v.Transparency = orig end)
+            end
+        end
+    end
+    invisTransparencyStore = {}
 end
 
 -- ==========================================
@@ -701,7 +837,8 @@ local function CreatePage(title)
     page.BackgroundTransparency = 1
     page.ScrollBarThickness = 2
     page.ScrollBarImageColor3 = Config.ThemeColor
-    page.ZIndex = 3    page.CanvasSize = UDim2.new(0, 0, 0, 0)
+    page.ZIndex = 3
+    page.CanvasSize = UDim2.new(0, 0, 0, 0)
     page.Parent = ContentContainer
     local layout = Instance.new("UIListLayout")
     layout.SortOrder = Enum.SortOrder.LayoutOrder
@@ -915,7 +1052,7 @@ local function DisableRTX()
 end
 
 -- ==========================================
--- Sky (ใช้ Sky object เดียว)
+-- Sky
 -- ==========================================
 local SkyPresets = {
     Sunset = {Bk="rbxassetid://5227623989", Dn="rbxassetid://5227624056", Ft="rbxassetid://5227624232", Lf="rbxassetid://5227624466", Rt="rbxassetid://5227624585", Up="rbxassetid://5227624698", StarCount=3000},
@@ -999,7 +1136,7 @@ if hasHook then
 end
 
 -- ==========================================
--- เมนู: หน้าหลัก (มี Silent Aim กลับมาแล้ว)
+-- เมนู: หน้าหลัก
 -- ==========================================
 CreateSidebarButton("🏠 หน้าหลัก", 1, function()
     local page = CreatePage("หน้าหลัก")
@@ -1032,8 +1169,6 @@ CreateSidebarButton("🏠 หน้าหลัก", 1, function()
     end)
     CreateSlider(page, "🔒 ความแรงล็อก", 0, 100, "LockStrength", 90, function(value) Config.LockStrength = value end)
     CreateToggle(page, "🧱 ไม่ล็อกผ่านกำแพง", "WallCheck", true, function(state) end)
-    
-    -- ✅ เพิ่ม Silent Aim กลับมาแล้ว
     CreateToggle(page, "🚀 Silent Aim (ยิงทะลุ)", "BulletHomingEnabled", false, function(state)
         if state then
             if FOVCircle then FOVCircle.Visible = true end
@@ -1046,7 +1181,7 @@ CreateSidebarButton("🏠 หน้าหลัก", 1, function()
 end)
 
 -- ==========================================
--- เมนู: ผู้เล่น
+-- เมนู: ผู้เล่น (มี เดินเร็ว / หายตัว / บิน)
 -- ==========================================
 CreateSidebarButton("👥 ผู้เล่น", 2, function()
     local page = CreatePage("รายชื่อผู้เล่น")
@@ -1062,7 +1197,7 @@ CreateSidebarButton("👥 ผู้เล่น", 2, function()
     Instance.new("UICorner", refreshBtn).CornerRadius = UDim.new(0, 6)
 
     local playerListFrame = Instance.new("Frame")
-    playerListFrame.Size = UDim2.new(1, 0, 0, 200)
+    playerListFrame.Size = UDim2.new(1, 0, 0, 160)
     playerListFrame.BackgroundColor3 = Config.BgColor
     playerListFrame.BackgroundTransparency = 0.7
     playerListFrame.ZIndex = 3
@@ -1141,43 +1276,60 @@ CreateSidebarButton("👥 ผู้เล่น", 2, function()
 end)
 
 -- ==========================================
--- เมนู: ผู้เล่น/บิน
+-- เมนู: ผู้เล่น/บิน (เพิ่ม เดินเร็ว / หายตัว / บิน)
 -- ==========================================
 CreateSidebarButton("👤 ผู้เล่น/บิน", 3, function()
     local page = CreatePage("ผู้เล่น & การเคลื่อนที่")
-    CreateTextBox(page, "⚡ ความเร็ว (0-1000)", "SpeedValue", 500, 1000, function(value)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
+
+    -- ✅ เดินเร็วปรับได้
+    CreateSlider(page, "⚡ ความเร็วเดิน", 16, 500, "SpeedValue", 200, function(value)
+        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") and Config.SpeedEnabled then
             LocalPlayer.Character.Humanoid.WalkSpeed = value
         end
     end)
-    CreateToggle(page, "🏃 วิ่งเร็ว", "SpeedEnabled", false, function(state)
-        if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid") then
-            LocalPlayer.Character.Humanoid.WalkSpeed = state and Config.SpeedValue or 16
-        end
-    end)
-    CreateToggle(page, "🛡️ ป้องกันการแบน", "SpeedBypass", true, function(state) end)
-    CreateSlider(page, "ความเร็วบิน", 10, 500, "FlySpeed", 100, function(value) end)
-    CreateToggle(page, "🕊️ โหมดบิน", "FlyEnabled", false, function(state)
+    CreateToggle(page, "🏃 เปิด/ปิด เดินเร็ว", "SpeedEnabled", false, function(state)
         local char = LocalPlayer.Character
-        local hrp = char and char:FindFirstChild("HumanoidRootPart")
-        local humanoid = char and char:FindFirstChildOfClass("Humanoid")
-        if hrp and humanoid then
-            if state then
-                humanoid.PlatformStand = true
-                local bg = Instance.new("BodyGyro", hrp); bg.Name = "MobFlyGyro"; bg.P = 9e4; bg.maxTorque = Vector3.new(9e9, 9e9, 9e9)
-                local bv = Instance.new("BodyVelocity", hrp); bv.Name = "MobFlyVelocity"; bv.velocity = Vector3.new(0, 0, 0); bv.maxForce = Vector3.new(9e9, 9e9, 9e9)
-                RunService.RenderStepped:Connect(function()
-                    if Config.FlyEnabled and hrp and hrp.Parent then
-                        bv.velocity = Camera.CFrame.LookVector * Config.FlySpeed
-                        bg.cframe = Camera.CFrame
-                    end
-                end)
-            else
-                UnlockMovement()
-            end
+        if char and char:FindFirstChildOfClass("Humanoid") then
+            char:FindFirstChildOfClass("Humanoid").WalkSpeed = state and Config.SpeedValue or originalWalkSpeed
         end
     end)
-    CreateButton(page, "🔓 ปลดล็อกการเคลื่อนที่", function() UnlockMovement() end)
+
+    -- ✅ หายตัว
+    CreateToggle(page, "👻 หายตัว (Invisible)", "InvisibleEnabled", false, function(state)
+        if state then
+            ApplyInvisible()
+            -- ถ้าตัวละครเกิดใหม่ ให้คงสถานะหายตัวไว้
+            local charCon
+            charCon = LocalPlayer.CharacterAdded:Connect(function(newChar)
+                task.wait(0.5)
+                if Config.InvisibleEnabled then ApplyInvisible() end
+            end)
+            SendNotification("หายตัว", "เปิดแล้ว - ตัวละครโปร่งใส", 2)
+        else
+            RemoveInvisible()
+            SendNotification("หายตัว", "ปิดแล้ว - ตัวละครกลับมา", 2)
+        end
+    end)
+
+    -- ✅ บิน (แก้เสถียร)
+    CreateSlider(page, "🕊️ ความเร็วบิน", 10, 500, "FlySpeed", 100, function(value) end)
+    CreateToggle(page, "✈️ โหมดบิน", "FlyEnabled", false, function(state)
+        if state then
+            StartFly()
+            SendNotification("บิน", "เปิดโหมดบิน - Space ขึ้น / Shift ลง", 3)
+        else
+            StopFly()
+            SendNotification("บิน", "ปิดโหมดบิน", 2)
+        end
+    end)
+    
+    CreateButton(page, "🔓 ปลดล็อกการเคลื่อนที่", function() 
+        UnlockMovement() 
+        if Config.InvisibleEnabled then
+            Config.InvisibleEnabled = false
+            RemoveInvisible()
+        end
+    end)
 end)
 
 -- ==========================================
@@ -1373,13 +1525,32 @@ if firstBtn and firstBtn:IsA("TextButton") then firstBtn.MouseButton1Click:Fire(
 task.spawn(function()
     while true do
         task.wait(0.1)
-        if Config.SpeedEnabled and Config.SpeedBypass then
+        if Config.SpeedEnabled then
             local char = LocalPlayer.Character
             if char and char:FindFirstChildOfClass("Humanoid") then
                 pcall(function()
                     char:FindFirstChildOfClass("Humanoid").WalkSpeed = Config.SpeedValue
                 end)
             end
+        end
+    end
+end)
+
+-- ระบบจัดการเมื่อตัวละครเกิดใหม่ (ให้ค่ากลับมา)
+LocalPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.5)
+    local humanoid = char:FindFirstChildOfClass("Humanoid")
+    if humanoid then
+        originalWalkSpeed = humanoid.WalkSpeed
+        originalJumpPower = humanoid.JumpPower
+        if Config.SpeedEnabled then
+            humanoid.WalkSpeed = Config.SpeedValue
+        end
+        if Config.InvisibleEnabled then
+            ApplyInvisible()
+        end
+        if Config.FlyEnabled then
+            StartFly()
         end
     end
 end)
@@ -1526,5 +1697,5 @@ task.spawn(function()
     if LoadingGui then LoadingGui:Destroy() end
     if ToggleButton then ToggleButton.Visible = true end
     if MainFrame then MainFrame.Visible = true end
-    SendNotification("ยินดีต้อนรับ", "🐱 แมวส้ม Hub Compact!", 3)
+    SendNotification("ยินดีต้อนรับ", "🐱 แมวส้ม Hub Compact v5!", 3)
 end)
